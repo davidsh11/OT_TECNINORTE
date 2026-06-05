@@ -17,8 +17,10 @@ import { saveOtMedia } from "./utils/localOtMedia";
 import { fileToPdfDataUrl, signatureToDataUrl, writePdfTab } from "./utils/pdf";
 import "./App.css";
 
-const apiHost = window.location.hostname === "localhost" ? "127.0.0.1" : window.location.hostname;
-const API = import.meta.env.VITE_API_URL || `${window.location.protocol}//${apiHost}:4000`;
+const LOCAL_API = "http://127.0.0.1:4000";
+const RENDER_API = "https://ot-tecninorte.onrender.com";
+const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const API = import.meta.env.VITE_API_URL || (isLocalhost ? LOCAL_API : RENDER_API);
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
