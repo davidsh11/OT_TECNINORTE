@@ -1,0 +1,11 @@
+*.xlsx
+*.json
+!server/package.json
+!server/package-lock.json
+!web/package.json
+!web/package-lock.json
+server/.env
+server/firebase-service-account*.json
+node_modules/
+server/node_modules/
+web/node_modules/

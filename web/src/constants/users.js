@@ -1,0 +1,103 @@
+export const users = [
+  {
+    username: "recepcion",
+    password: "1234",
+    role: "recepcion",
+    name: "Recepcion",
+    allowedViews: ["inicio", "crear", "buscar", "salida"]
+  },
+  {
+    username: "cobranza",
+    password: "1234",
+    role: "cobranza",
+    name: "Cobranza",
+    allowedViews: ["inicio", "cobranza", "reportes"]
+  },
+  {
+    username: "jefe",
+    password: "1234",
+    role: "jefe_taller",
+    name: "Jefe de taller",
+    allowedViews: ["inicio", "taller", "cierre"],
+    canAssignOt: true
+  },
+  {
+    username: "angelf",
+    password: "1234",
+    role: "mecanico",
+    name: "ANGELF",
+    mechanicId: "ANGELF",
+    allowedViews: ["inicio", "taller"],
+    canAssignOt: false
+  },
+  {
+    username: "fernandos",
+    password: "1234",
+    role: "mecanico",
+    name: "FERNANDOS",
+    mechanicId: "FERNANDOS",
+    allowedViews: ["inicio", "taller"],
+    canAssignOt: false
+  },
+  {
+    username: "diegom",
+    password: "1234",
+    role: "mecanico",
+    name: "DIEGOM",
+    mechanicId: "DIEGOM",
+    allowedViews: ["inicio", "taller"],
+    canAssignOt: false
+  },
+  {
+    username: "jorges",
+    password: "1234",
+    role: "mecanico",
+    name: "JORGES",
+    mechanicId: "JORGES",
+    allowedViews: ["inicio", "taller"],
+    canAssignOt: false
+  },
+  {
+    username: "joselos",
+    password: "1234",
+    role: "mecanico",
+    name: "JOSELOS",
+    mechanicId: "JOSELOS",
+    allowedViews: ["inicio", "taller"],
+    canAssignOt: false
+  },
+  {
+    username: "yong",
+    password: "1234",
+    role: "mecanico",
+    name: "YONG",
+    mechanicId: "YONG",
+    allowedViews: ["inicio", "taller"],
+    canAssignOt: false
+  },
+  {
+    username: "admin",
+    password: "admin",
+    role: "admin",
+    name: "Administrador",
+    allowedViews: ["inicio", "crear", "buscar", "taller", "cierre", "cobranza", "salida", "reportes"],
+    canAssignOt: true
+  }
+];
+
+export const mechanics = users
+  .filter((user) => user.role === "mecanico")
+  .map((user) => ({
+    id: user.mechanicId,
+    name: user.name
+  }));
+
+export function authenticateUser(username, password) {
+  return (
+    users.find(
+      (user) =>
+        user.username.toLowerCase() === username.trim().toLowerCase() &&
+        user.password === password
+    ) || null
+  );
+}
