@@ -43,7 +43,10 @@ export default function TallerOTView({ api, currentUser }) {
   };
 
   const canAssign = Boolean(currentUser?.canAssignOt);
+  const isAdmin = currentUser?.role === "admin";
   const assignedTo = currentUser?.role === "mecanico" ? currentUser.name : "";
+  const hasLaborPrice = Boolean(String(selected?.ValorCobrar || "").trim());
+  const canEditWorkshopData = isAdmin || (!canAssign && !hasLaborPrice);
 
   const updateAssignedMechanic = (mechanicName) => {
     setForm((current) => ({
@@ -109,7 +112,12 @@ export default function TallerOTView({ api, currentUser }) {
       return;
     }
 
-    if (!canAssign) {
+    if (hasLaborPrice && !isAdmin) {
+      alert("Esta OT ya tiene precio de mano de obra. Solo admin puede editar repuestos o detalle de trabajo.");
+      return;
+    }
+
+    if (!canAssign || isAdmin) {
       if (!form.MecanicoResponsable.trim()) {
         alert("La OT debe tener un mecanico responsable.");
         return;
@@ -129,11 +137,20 @@ export default function TallerOTView({ api, currentUser }) {
     try {
       setSaving(true);
       setError("");
-      const payload = canAssign ? form : { ...form, Estado: "Finalizado" };
-      await axios.patch(`${api}/api/ot/${selected.ID}/taller`, { cabecera: payload });
+      const payload = canAssign && !isAdmin ? form : { ...form, Estado: "Finalizado" };
+      await axios.patch(`${api}/api/ot/${selected.ID}/taller`, {
+        cabecera: payload,
+        userRole: currentUser?.role
+      });
 
-      if (canAssign) {
+      if (canAssign && !isAdmin) {
         alert("Mecanico asignado correctamente.");
+        setSelected(null);
+        setDetalle([]);
+        setForm(emptyTaller);
+        setResultados((current) => current.filter((ot) => ot.ID !== selected.ID));
+      } else if (!canAssign) {
+        alert("Datos de taller guardados.");
         setSelected(null);
         setDetalle([]);
         setForm(emptyTaller);
@@ -258,7 +275,13 @@ export default function TallerOTView({ api, currentUser }) {
             </p>
           </section>
 
-          {!canAssign ? (
+          {hasLaborPrice && !isAdmin ? (
+            <p className="empty-state workshop-empty">
+              Esta OT ya tiene precio de mano de obra. Los repuestos y el detalle del trabajo quedan bloqueados.
+            </p>
+          ) : null}
+
+          {canEditWorkshopData ? (
             <TrabajoRealizadoForm cabecera={form} onChange={updateForm} lockMechanic />
           ) : null}
 
@@ -280,11 +303,20 @@ export default function TallerOTView({ api, currentUser }) {
           <div className="workshop-actions">
             <span>
               {canAssign
-                ? "El jefe de taller solo asigna el mecanico responsable."
-                : "Estos datos actualizan la misma OT para uso interno."}
+                ? isAdmin
+                  ? "Admin puede editar los datos de taller."
+                  : "El jefe de taller solo asigna el mecanico responsable."
+                : hasLaborPrice
+                  ? "Esta OT ya tiene precio de mano de obra y no puede ser editada por mecanico."
+                  : "Estos datos actualizan la misma OT para uso interno."}
             </span>
-            <button className="primary-button" type="button" onClick={guardarTaller} disabled={saving}>
-              {saving ? "Guardando..." : canAssign ? "Guardar asignacion" : "Guardar datos de taller"}
+            <button
+              className="primary-button"
+              type="button"
+              onClick={guardarTaller}
+              disabled={saving || (hasLaborPrice && !isAdmin)}
+            >
+              {saving ? "Guardando..." : canAssign && !isAdmin ? "Guardar asignacion" : "Guardar datos de taller"}
             </button>
           </div>
         </>

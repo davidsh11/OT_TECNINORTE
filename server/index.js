@@ -479,11 +479,22 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
     const { db } = getFirebase();
     const id = String(req.params.id);
     const cabecera = req.body?.cabecera || {};
+    const userRole = normalizeText(req.body?.userRole);
     const otRef = db.collection(OT_COLLECTION).doc(id);
     const otSnapshot = await otRef.get();
 
     if (!otSnapshot.exists) {
       return res.status(404).json({ ok: false, error: "OT no encontrada" });
+    }
+
+    const currentOt = otSnapshot.data() || {};
+    const hasLaborPrice = hasChargeValue(currentOt);
+
+    if (hasLaborPrice && userRole !== "admin") {
+      return res.status(409).json({
+        ok: false,
+        error: "La OT ya tiene precio de mano de obra. Solo admin puede editar datos de taller"
+      });
     }
 
     const nextEstado = cabecera.Estado || "Recibido";
