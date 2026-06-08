@@ -131,9 +131,18 @@ export default function TallerOTView({ api, currentUser }) {
       setError("");
       const payload = canAssign ? form : { ...form, Estado: "Finalizado" };
       await axios.patch(`${api}/api/ot/${selected.ID}/taller`, { cabecera: payload });
-      setSelected((current) => ({ ...current, ...payload }));
-      setForm(payload);
-      alert("Datos de taller guardados.");
+
+      if (canAssign) {
+        alert("Mecanico asignado correctamente.");
+        setSelected(null);
+        setDetalle([]);
+        setForm(emptyTaller);
+        setResultados((current) => current.filter((ot) => ot.ID !== selected.ID));
+      } else {
+        setSelected((current) => ({ ...current, ...payload }));
+        setForm(payload);
+        alert("Datos de taller guardados.");
+      }
     } catch (requestError) {
       console.error(requestError);
       setError("No se pudieron guardar los datos de taller.");
