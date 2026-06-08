@@ -116,7 +116,7 @@ export default function SalidaOTView({ api }) {
               </span>
               <span>
                 <strong>{ot.Placa || "Sin placa"}</strong>
-                <small>${ot.ValorCobrar || "0.00"}</small>
+                <small>Listo para salida</small>
               </span>
             </button>
           ))}
@@ -148,8 +148,6 @@ export default function SalidaOTView({ api }) {
                 </strong>
                 <span>Placa</span>
                 <strong>{selected.Placa || "-"}</strong>
-                <span>Valor cobrado</span>
-                <strong>${selected.ValorCobrar || "0.00"}</strong>
                 <span>Fecha cobro</span>
                 <strong>{formatDate(selected.FechaCobro) || "-"}</strong>
               </div>
