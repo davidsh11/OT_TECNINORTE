@@ -76,6 +76,15 @@ export const users = [
     canAssignOt: false
   },
   {
+    username: "armandoa",
+    password: "1234",
+    role: "mecanico",
+    name: "ARMANDOA",
+    mechanicId: "ARMANDOA",
+    allowedViews: ["inicio", "taller"],
+    canAssignOt: false
+  },
+  {
     username: "admin",
     password: "admin",
     role: "admin",
