@@ -66,8 +66,11 @@ export default function CierreOTView({ api }) {
       setSaving(true);
       setError("");
       await axios.patch(`${api}/api/ot/${selected.ID}/cobro`, { ValorCobrar: valorCobrar });
-      setSelected((current) => ({ ...current, ValorCobrar: valorCobrar }));
       alert("Valor de mano de obra guardado.");
+      setSelected(null);
+      setDetalle([]);
+      setValorCobrar("");
+      await cargarFinalizadas();
     } catch (requestError) {
       console.error(requestError);
       setError("No se pudo guardar el valor de mano de obra.");
