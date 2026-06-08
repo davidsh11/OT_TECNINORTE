@@ -57,6 +57,11 @@ export default function CierreOTView({ api }) {
   const guardarCobro = async () => {
     if (!selected?.ID) return;
 
+    if (selected.Cobrado) {
+      setError("Esta OT ya fue cobrada y no se puede editar el valor de mano de obra.");
+      return;
+    }
+
     try {
       setSaving(true);
       setError("");
@@ -119,7 +124,7 @@ export default function CierreOTView({ api }) {
               </span>
               <span>
                 <strong>{ot.Placa || "Sin placa"}</strong>
-                <small>{formatDate(ot.FechaEntrega) || formatDate(ot.FechaRecepcion)}</small>
+                <small>{ot.Cobrado ? "OT cobrada" : formatDate(ot.FechaEntrega) || formatDate(ot.FechaRecepcion)}</small>
               </span>
             </button>
           ))}
@@ -136,7 +141,8 @@ export default function CierreOTView({ api }) {
                   <h3>{selected.Propietario || "Sin propietario"}</h3>
                 </div>
                 <div className="ot-detail-actions">
-                  <strong>{selected.Estado || "Finalizada"}</strong>
+                  <strong>{selected.Cobrado ? "OT cobrada" : selected.Estado || "Finalizada"}</strong>
+                  {selected.Cobrado ? <small>No editable</small> : null}
                 </div>
               </div>
 
@@ -198,13 +204,25 @@ export default function CierreOTView({ api }) {
                     min="0"
                     step="0.01"
                     placeholder="0.00"
+                    readOnly={Boolean(selected.Cobrado)}
                     value={valorCobrar}
                     onChange={(event) => setValorCobrar(event.target.value)}
                   />
-                  <button className="primary-button" type="button" onClick={guardarCobro} disabled={saving}>
-                    {saving ? "Guardando..." : "Guardar mano de obra"}
-                  </button>
+                  {selected.Cobrado ? (
+                    <button type="button" disabled>
+                      OT cobrada
+                    </button>
+                  ) : (
+                    <button className="primary-button" type="button" onClick={guardarCobro} disabled={saving}>
+                      {saving ? "Guardando..." : "Guardar mano de obra"}
+                    </button>
+                  )}
                 </div>
+                {selected.Cobrado ? (
+                  <p className="empty-state workshop-empty">
+                    Esta OT ya fue cobrada por cobranza. El valor de mano de obra queda bloqueado.
+                  </p>
+                ) : null}
               </section>
             </>
           )}

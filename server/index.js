@@ -404,6 +404,13 @@ app.patch("/api/ot/:id/cobro", async (req, res) => {
       return res.status(404).json({ ok: false, error: "OT no encontrada" });
     }
 
+    if (otSnapshot.data()?.Cobrado) {
+      return res.status(409).json({
+        ok: false,
+        error: "La OT ya fue cobrada y no se puede editar el valor de mano de obra"
+      });
+    }
+
     await otRef.update({
       ValorCobrar: valorCobrar,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
