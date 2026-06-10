@@ -1,11 +1,13 @@
 const menuItems = [
   ["inicio", "Inicio", "home"],
   ["crear", "Nueva OT", "filePlus"],
-  ["buscar", "Buscar OT", "search"],
   ["taller", "Taller", "wrench"],
   ["cierre", "Cierre OT", "money"],
   ["cobranza", "Cobranza", "money"],
   ["salida", "Salida", "exit"],
+  ["buscar", "Buscar OT", "search"],
+  ["datosClientes", "Datos clientes", "userEdit"],
+  ["historial", "Historial", "history"],
   ["reportes", "Reportes", "chart"]
 ];
 
@@ -38,6 +40,27 @@ function MenuIcon({ name }) {
       <svg {...common}>
         <circle cx="11" cy="11" r="7" />
         <path d="m20 20-4-4" />
+      </svg>
+    );
+  }
+
+  if (name === "history") {
+    return (
+      <svg {...common}>
+        <path d="M3 12a9 9 0 1 0 3-6.7" />
+        <path d="M3 4v6h6" />
+        <path d="M12 7v5l4 2" />
+      </svg>
+    );
+  }
+
+  if (name === "userEdit") {
+    return (
+      <svg {...common}>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="m16 11 5 5" />
+        <path d="m21 11-5 5" />
       </svg>
     );
   }

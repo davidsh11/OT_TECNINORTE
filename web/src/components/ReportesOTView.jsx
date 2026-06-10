@@ -322,7 +322,9 @@ export default function ReportesOTView({ api }) {
                 <span>{ot.Propietario || "Sin propietario"} / CL: {ot.CL || "-"}</span>
                 <span>{ot.Placa || "Sin placa"}</span>
                 <span>{ot.MecanicoResponsable || "Sin mecanico"}</span>
-                <span>{ot.Cobrado ? "Cobrado" : "Pendiente"}</span>
+                <span className={`payment-status-badge ${ot.Cobrado ? "paid" : "pending"}`}>
+                  {ot.Cobrado ? "Cobrado" : "Pendiente"}
+                </span>
                 <strong>{formatMoney(ot.ValorTotal)}</strong>
                 <span>Rep. {formatMoney(ot.ValorRepuestos)}</span>
                 <small>{formatDate(ot.FechaCobro || ot.FechaEntrega || ot.FechaRecepcion)}</small>

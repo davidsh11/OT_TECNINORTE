@@ -14,9 +14,14 @@ export default function CrearOTView({
   ev1,
   ev2,
   guardando,
+  buscandoCliente,
+  buscandoVehiculo,
   sigCliente,
   sigRecep,
   onCabeceraChange,
+  onBuscarCliente,
+  onBuscarVehiculo,
+  onLimpiarPrecargados,
   onNuevoTrabajoChange,
   onNuevoRepuestoChange,
   onAgregarTrabajo,
@@ -28,9 +33,25 @@ export default function CrearOTView({
 }) {
   return (
     <>
+      <div className="preload-actions">
+        <button className="ghost-button" type="button" onClick={onLimpiarPrecargados}>
+          Limpiar datos precargados
+        </button>
+      </div>
+
       <section className="section-grid">
-        <ClienteForm cabecera={cabecera} onChange={onCabeceraChange} />
-        <VehiculoForm cabecera={cabecera} onChange={onCabeceraChange} />
+        <ClienteForm
+          cabecera={cabecera}
+          buscandoCliente={buscandoCliente}
+          onBuscarCliente={onBuscarCliente}
+          onChange={onCabeceraChange}
+        />
+        <VehiculoForm
+          cabecera={cabecera}
+          buscandoVehiculo={buscandoVehiculo}
+          onBuscarVehiculo={onBuscarVehiculo}
+          onChange={onCabeceraChange}
+        />
       </section>
 
       <ObservacionesForm value={cabecera.Observaciones} onChange={onCabeceraChange} />

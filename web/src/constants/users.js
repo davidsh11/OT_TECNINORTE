@@ -4,21 +4,21 @@ export const users = [
     password: "1234",
     role: "recepcion",
     name: "Recepcion",
-    allowedViews: ["inicio", "crear", "buscar", "salida"]
+    allowedViews: ["inicio", "crear", "buscar", "historial", "salida"]
   },
   {
     username: "cobranza",
     password: "1234",
     role: "cobranza",
     name: "Cobranza",
-    allowedViews: ["inicio", "cobranza", "reportes"]
+    allowedViews: ["inicio", "datosClientes", "historial", "cobranza", "reportes"]
   },
   {
     username: "jefe",
     password: "1234",
     role: "jefe_taller",
     name: "Jefe de taller",
-    allowedViews: ["inicio", "taller", "cierre"],
+    allowedViews: ["inicio", "historial", "taller", "cierre", "reportes"],
     canAssignOt: true
   },
   {
@@ -89,7 +89,7 @@ export const users = [
     password: "admin",
     role: "admin",
     name: "Administrador",
-    allowedViews: ["inicio", "crear", "buscar", "taller", "cierre", "cobranza", "salida", "reportes"],
+    allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "cierre", "cobranza", "salida", "reportes"],
     canAssignOt: true
   }
 ];

@@ -10,6 +10,10 @@ function formatDate(value) {
   return String(value);
 }
 
+function getProcessStatus(ot) {
+  return ot.EstadoProceso || (ot.Cobrado && ot.SalidaAutorizada ? "FINALIZADO" : "EN PROCESO");
+}
+
 export default function BuscarOTView({ api }) {
   const [search, setSearch] = useState("");
   const [ordenes, setOrdenes] = useState([]);
@@ -121,6 +125,13 @@ export default function BuscarOTView({ api }) {
               <span>
                 <strong>{ot.Placa || "Sin placa"}</strong>
                 <small>{formatDate(ot.FechaRecepcion)}</small>
+                <small
+                  className={`ot-status-pill ${
+                    getProcessStatus(ot) === "FINALIZADO" ? "status-final" : "status-process"
+                  }`}
+                >
+                  {getProcessStatus(ot)}
+                </small>
               </span>
             </button>
           ))}

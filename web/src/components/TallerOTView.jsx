@@ -11,11 +11,19 @@ const emptyTaller = {
   Estado: "Recibido"
 };
 
+function sentenceText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/(^\s*[\p{L}])|([.!?:]\s+[\p{L}])|(\n\s*[\p{L}])/gu, (match) =>
+      match.toUpperCase()
+    );
+}
+
 function toTallerForm(ot) {
   return {
     MecanicoResponsable: ot?.MecanicoResponsable || "",
-    RepuestosUsados: ot?.RepuestosUsados || "",
-    TrabajoRealizado: ot?.TrabajoRealizado || "",
+    RepuestosUsados: sentenceText(ot?.RepuestosUsados),
+    TrabajoRealizado: sentenceText(ot?.TrabajoRealizado),
     FechaEntrega: ot?.FechaEntrega || "",
     Estado: ot?.Estado || "Recibido"
   };
@@ -39,7 +47,10 @@ export default function TallerOTView({ api, currentUser }) {
   const [error, setError] = useState("");
 
   const updateForm = (key, value) => {
-    setForm((current) => ({ ...current, [key]: value }));
+    const nextValue = ["RepuestosUsados", "TrabajoRealizado"].includes(key)
+      ? sentenceText(value)
+      : value;
+    setForm((current) => ({ ...current, [key]: nextValue }));
   };
 
   const canAssign = Boolean(currentUser?.canAssignOt);
@@ -137,7 +148,12 @@ export default function TallerOTView({ api, currentUser }) {
     try {
       setSaving(true);
       setError("");
-      const payload = canAssign && !isAdmin ? form : { ...form, Estado: "Finalizado" };
+      const formattedForm = {
+        ...form,
+        RepuestosUsados: sentenceText(form.RepuestosUsados),
+        TrabajoRealizado: sentenceText(form.TrabajoRealizado)
+      };
+      const payload = canAssign && !isAdmin ? formattedForm : { ...formattedForm, Estado: "Finalizado" };
       await axios.patch(`${api}/api/ot/${selected.ID}/taller`, {
         cabecera: payload,
         userRole: currentUser?.role

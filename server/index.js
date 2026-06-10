@@ -10,9 +10,88 @@ app.use(cors());
 app.use(express.json({ limit: "25mb" }));
 
 const PORT = process.env.PORT || 4000;
+const CLIENTES_COLLECTION = process.env.FIRESTORE_CLIENTES_COLLECTION || "Clientes";
+const CLIENTES_VEHICULOS_COLLECTION =
+  process.env.FIRESTORE_CLIENTES_VEHICULOS_COLLECTION || "ClientesVehiculos";
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function upperText(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function sentenceText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/(^\s*[\p{L}])|([.!?:]\s+[\p{L}])|(\n\s*[\p{L}])/gu, (match) =>
+      match.toUpperCase()
+    );
+}
+
+function normalizePlate(value) {
+  return String(value || "").trim().toUpperCase().replace(/\s/g, "");
+}
+
+function normalizeIdentification(value) {
+  return String(value || "").trim().toUpperCase().replace(/\s/g, "");
+}
+
+function buildClienteVehiculo(cabecera) {
+  const placa = normalizePlate(cabecera?.Placa);
+  const cl = normalizeIdentification(cabecera?.CL);
+
+  return {
+    Propietario: upperText(cabecera?.Propietario),
+    CL: cl,
+    CLKey: cl,
+    Telefonos: upperText(cabecera?.Telefonos),
+    CorreoElectronico: upperText(cabecera?.CorreoElectronico),
+    Direccion: upperText(cabecera?.Direccion),
+    Marca: upperText(cabecera?.Marca),
+    Modelo: upperText(cabecera?.Modelo),
+    Placa: placa,
+    Color: upperText(cabecera?.Color),
+    MarcaRadio: upperText(cabecera?.MarcaRadio),
+    Anio: upperText(cabecera?.Anio),
+    Kilometraje: upperText(cabecera?.Kilometraje),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+}
+
+function buildCliente(cabecera) {
+  const cl = normalizeIdentification(cabecera?.CL);
+
+  return {
+    CL: cl,
+    Propietario: upperText(cabecera?.Propietario),
+    Telefonos: upperText(cabecera?.Telefonos),
+    CorreoElectronico: upperText(cabecera?.CorreoElectronico),
+    Direccion: upperText(cabecera?.Direccion),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+}
+
+function clientFromRecord(record, cl) {
+  return {
+    Propietario: upperText(record?.Propietario),
+    CL: upperText(record?.CL || cl),
+    Telefonos: upperText(record?.Telefonos),
+    CorreoElectronico: upperText(record?.CorreoElectronico),
+    Direccion: upperText(record?.Direccion)
+  };
+}
+
+function recordDateValue(record) {
+  return record?.updatedAt?.toMillis?.() || record?.createdAt?.toMillis?.() || 0;
+}
+
+function latestRecord(records) {
+  return records.reduce((latest, item) => {
+    return recordDateValue(item) > recordDateValue(latest) ? item : latest;
+  }, records[0]);
 }
 
 function isCompleted(ot) {
@@ -54,35 +133,53 @@ function reportDate(ot) {
   return readDate(ot.FechaCobro) || readDate(ot.FechaEntrega) || readDate(ot.FechaRecepcion);
 }
 
+function displayDate(value) {
+  const date = readDate(value);
+  return date ? date.toISOString() : "";
+}
+
+function matchesDateRange(ot, dateFrom, dateTo) {
+  const date = reportDate(ot);
+  if (!date) return false;
+  if (dateFrom && date < dateFrom) return false;
+  if (dateTo && date > dateTo) return false;
+  return true;
+}
+
+function processStatus(ot) {
+  return ot?.Cobrado && ot?.SalidaAutorizada ? "FINALIZADO" : "EN PROCESO";
+}
+
 const MONTH_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 function buildCabecera(cabecera, otId) {
   return {
     ID: otId,
-    Propietario: cabecera?.Propietario || "",
-    CL: cabecera?.CL || "",
-    Telefonos: cabecera?.Telefonos || "",
-    Direccion: cabecera?.Direccion || "",
-    Marca: cabecera?.Marca || "",
-    Modelo: cabecera?.Modelo || "",
-    Placa: cabecera?.Placa || "",
-    Color: cabecera?.Color || "",
-    MarcaRadio: cabecera?.MarcaRadio || "",
-    Anio: cabecera?.Anio || "",
-    Kilometraje: cabecera?.Kilometraje || "",
-    Observaciones: cabecera?.Observaciones || "",
-    MecanicoResponsable: cabecera?.MecanicoResponsable || "",
-    RepuestosUsados: cabecera?.RepuestosUsados || "",
-    TrabajoRealizado: cabecera?.TrabajoRealizado || "",
-    ValorCobrar: cabecera?.ValorCobrar || "",
-    ValorRepuestos: cabecera?.ValorRepuestos || "",
+    Propietario: upperText(cabecera?.Propietario),
+    CL: normalizeIdentification(cabecera?.CL),
+    Telefonos: upperText(cabecera?.Telefonos),
+    CorreoElectronico: upperText(cabecera?.CorreoElectronico),
+    Direccion: upperText(cabecera?.Direccion),
+    Marca: upperText(cabecera?.Marca),
+    Modelo: upperText(cabecera?.Modelo),
+    Placa: normalizePlate(cabecera?.Placa),
+    Color: upperText(cabecera?.Color),
+    MarcaRadio: upperText(cabecera?.MarcaRadio),
+    Anio: upperText(cabecera?.Anio),
+    Kilometraje: upperText(cabecera?.Kilometraje),
+    Observaciones: upperText(cabecera?.Observaciones),
+    MecanicoResponsable: upperText(cabecera?.MecanicoResponsable),
+    RepuestosUsados: sentenceText(cabecera?.RepuestosUsados),
+    TrabajoRealizado: sentenceText(cabecera?.TrabajoRealizado),
+    ValorCobrar: upperText(cabecera?.ValorCobrar),
+    ValorRepuestos: upperText(cabecera?.ValorRepuestos),
     Cobrado: Boolean(cabecera?.Cobrado),
-    FechaCobro: cabecera?.FechaCobro || "",
+    FechaCobro: upperText(cabecera?.FechaCobro),
     SalidaAutorizada: Boolean(cabecera?.SalidaAutorizada),
-    FechaSalida: cabecera?.FechaSalida || "",
-    Estado: cabecera?.Estado || "Recibido",
+    FechaSalida: upperText(cabecera?.FechaSalida),
+    Estado: upperText(cabecera?.Estado || "RECIBIDO"),
     FechaRecepcion: cabecera?.FechaRecepcion || new Date().toISOString(),
-    FechaEntrega: cabecera?.FechaEntrega || "",
+    FechaEntrega: upperText(cabecera?.FechaEntrega),
     Evidencia1Path: "",
     Evidencia2Path: "",
     FirmaClientePath: "",
@@ -107,23 +204,52 @@ app.post("/api/ot", async (req, res) => {
       return res.status(400).json({ ok: false, error: "Telefonos debe tener 10 digitos numericos" });
     }
 
-    if (!String(cabecera?.Placa || "").trim()) {
+    if (
+      cabecera?.CorreoElectronico &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(cabecera.CorreoElectronico))
+    ) {
+      return res.status(400).json({ ok: false, error: "CorreoElectronico no es valido" });
+    }
+
+    const placa = normalizePlate(cabecera?.Placa);
+
+    if (!placa) {
       return res.status(400).json({ ok: false, error: "Placa es obligatoria" });
     }
 
     const { db } = getFirebase();
     const otId = String(Date.now());
+    const cl = normalizeIdentification(cabecera?.CL);
     const otRef = db.collection(OT_COLLECTION).doc(otId);
+    const clienteVehiculoRef = db.collection(CLIENTES_VEHICULOS_COLLECTION).doc(placa);
     const batch = db.batch();
 
     batch.set(otRef, buildCabecera(cabecera, otId));
+    if (cl) {
+      batch.set(
+        db.collection(CLIENTES_COLLECTION).doc(cl),
+        {
+          ...buildCliente(cabecera),
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        },
+        { merge: true }
+      );
+    }
+    batch.set(
+      clienteVehiculoRef,
+      {
+        ...buildClienteVehiculo(cabecera),
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
 
     detalle.forEach((item) => {
       const detalleRef = otRef.collection("detalle").doc(uuidv4());
       batch.set(detalleRef, {
         OrdenID: otId,
-        Tipo: item.Tipo || "",
-        Descripcion: item.Descripcion || "",
+        Tipo: upperText(item.Tipo),
+        Descripcion: upperText(item.Descripcion),
         Cantidad: item.Cantidad ?? "",
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
@@ -131,9 +257,324 @@ app.post("/api/ot", async (req, res) => {
 
     await batch.commit();
 
-    res.json({ ok: true, otId, warnings: [] });
+    res.json({
+      ok: true,
+      otId,
+      clienteActualizado: true,
+      clientesActualizados: {
+        clientes: Boolean(cl),
+        clientesVehiculos: true,
+        placa
+      },
+      warnings: ["Datos del cliente actualizados."]
+    });
   } catch (e) {
     console.error("POST /api/ot fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/clientes/identificacion/:cl", async (req, res) => {
+  try {
+    const cl = normalizeIdentification(req.params.cl);
+
+    if (!cl) {
+      return res.status(400).json({ ok: false, error: "Cedula/RUC es obligatorio" });
+    }
+
+    const { db } = getFirebase();
+    const clienteSnapshot = await db.collection(CLIENTES_COLLECTION).doc(cl).get();
+
+    if (clienteSnapshot.exists) {
+      return res.json({
+        ok: true,
+        cliente: clientFromRecord(clienteSnapshot.data(), cl),
+        vehiculos: []
+      });
+    }
+
+    let snapshot = await db
+      .collection(CLIENTES_VEHICULOS_COLLECTION)
+      .where("CLKey", "==", cl)
+      .limit(10)
+      .get();
+
+    if (snapshot.empty) {
+      snapshot = await db
+        .collection(CLIENTES_VEHICULOS_COLLECTION)
+        .where("CL", "==", cl)
+        .limit(10)
+        .get();
+    }
+
+    if (snapshot.empty) {
+      const allVehiclesSnapshot = await db.collection(CLIENTES_VEHICULOS_COLLECTION).limit(500).get();
+      const matchedVehicles = allVehiclesSnapshot.docs
+        .map((doc) => ({
+          ID: doc.id,
+          ...doc.data()
+        }))
+        .filter((item) => normalizeIdentification(item.CL || item.CLKey) === cl);
+
+      if (matchedVehicles.length) {
+        const cliente = latestRecord(matchedVehicles);
+
+        return res.json({
+          ok: true,
+          cliente: clientFromRecord(cliente, cl),
+          vehiculos: matchedVehicles.map((item) => ({
+            Placa: upperText(item.Placa || item.ID),
+            Marca: upperText(item.Marca),
+            Modelo: upperText(item.Modelo),
+            Color: upperText(item.Color),
+            Anio: upperText(item.Anio)
+          }))
+        });
+      }
+
+      const otSnapshot = await db.collection(OT_COLLECTION).limit(500).get();
+      const matchedOts = otSnapshot.docs
+        .map((doc) => ({
+          ID: doc.id,
+          ...doc.data()
+        }))
+        .filter((item) => normalizeIdentification(item.CL) === cl);
+
+      if (!matchedOts.length) {
+        return res.status(404).json({ ok: false, error: "Cliente no encontrado" });
+      }
+
+      const cliente = latestRecord(matchedOts);
+
+      return res.json({
+        ok: true,
+        cliente: clientFromRecord(cliente, cl),
+        vehiculos: matchedOts.map((item) => ({
+          Placa: upperText(item.Placa),
+          Marca: upperText(item.Marca),
+          Modelo: upperText(item.Modelo),
+          Color: upperText(item.Color),
+          Anio: upperText(item.Anio)
+        }))
+      });
+    }
+
+    const registros = snapshot.docs.map((doc) => ({
+      ID: doc.id,
+      ...doc.data()
+    }));
+    const cliente = latestRecord(registros);
+
+    res.json({
+      ok: true,
+      cliente: clientFromRecord(cliente, cl),
+      vehiculos: registros.map((item) => ({
+        Placa: upperText(item.Placa || item.ID),
+        Marca: upperText(item.Marca),
+        Modelo: upperText(item.Modelo),
+        Color: upperText(item.Color),
+        Anio: upperText(item.Anio)
+      }))
+    });
+  } catch (e) {
+    console.error("GET /api/clientes/identificacion/:cl fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/clientes-vehiculos/:placa", async (req, res) => {
+  try {
+    const placa = normalizePlate(req.params.placa);
+
+    if (!placa) {
+      return res.status(400).json({ ok: false, error: "Placa es obligatoria" });
+    }
+
+    const { db } = getFirebase();
+    const snapshot = await db.collection(CLIENTES_VEHICULOS_COLLECTION).doc(placa).get();
+
+    if (!snapshot.exists) {
+      return res.status(404).json({ ok: false, error: "Registro no encontrado" });
+    }
+
+    res.json({
+      ok: true,
+      registro: {
+        Propietario: upperText(snapshot.data()?.Propietario),
+        CL: upperText(snapshot.data()?.CL),
+        Telefonos: upperText(snapshot.data()?.Telefonos),
+        CorreoElectronico: upperText(snapshot.data()?.CorreoElectronico),
+        Direccion: upperText(snapshot.data()?.Direccion),
+        Marca: upperText(snapshot.data()?.Marca),
+        Modelo: upperText(snapshot.data()?.Modelo),
+        Placa: placa,
+        Color: upperText(snapshot.data()?.Color),
+        MarcaRadio: upperText(snapshot.data()?.MarcaRadio),
+        Anio: upperText(snapshot.data()?.Anio),
+        Kilometraje: upperText(snapshot.data()?.Kilometraje)
+      }
+    });
+  } catch (e) {
+    console.error("GET /api/clientes-vehiculos/:placa fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/clientes-datos", async (req, res) => {
+  try {
+    const cl = normalizeIdentification(req.query.cl);
+    const placa = normalizePlate(req.query.placa);
+
+    if (!cl && !placa) {
+      return res.status(400).json({ ok: false, error: "Ingrese cedula/RUC o placa" });
+    }
+
+    const { db } = getFirebase();
+    let registro = null;
+
+    if (placa) {
+      const snapshot = await db.collection(CLIENTES_VEHICULOS_COLLECTION).doc(placa).get();
+      if (snapshot.exists) {
+        registro = snapshot.data();
+      }
+    }
+
+    if (!registro && cl) {
+      const clienteSnapshot = await db.collection(CLIENTES_COLLECTION).doc(cl).get();
+      let vehiculo = null;
+      const vehiculoSnapshot = await db
+        .collection(CLIENTES_VEHICULOS_COLLECTION)
+        .where("CL", "==", cl)
+        .limit(1)
+        .get();
+
+      if (!vehiculoSnapshot.empty) {
+        vehiculo = vehiculoSnapshot.docs[0].data();
+      }
+
+      if (clienteSnapshot.exists || vehiculo) {
+        registro = {
+          ...(vehiculo || {}),
+          ...(clienteSnapshot.exists ? clienteSnapshot.data() : {})
+        };
+      }
+    }
+
+    if (!registro) {
+      const search = placa || cl;
+      const otSnapshot = await db.collection(OT_COLLECTION).limit(300).get();
+      const ots = otSnapshot.docs
+        .map((doc) => ({
+          ID: doc.id,
+          ...doc.data()
+        }))
+        .filter((ot) => {
+          if (placa) return normalizePlate(ot.Placa) === search;
+          return normalizeIdentification(ot.CL) === search;
+        });
+
+      if (ots.length) {
+        registro = latestRecord(ots);
+      }
+    }
+
+    if (!registro) {
+      return res.status(404).json({ ok: false, error: "Cliente no encontrado" });
+    }
+
+    res.json({
+      ok: true,
+      registro: {
+        Propietario: upperText(registro.Propietario),
+        CL: upperText(registro.CL || cl),
+        Telefonos: upperText(registro.Telefonos),
+        CorreoElectronico: upperText(registro.CorreoElectronico),
+        Direccion: upperText(registro.Direccion),
+        Placa: normalizePlate(registro.Placa || placa),
+        Marca: upperText(registro.Marca),
+        Modelo: upperText(registro.Modelo),
+        Color: upperText(registro.Color),
+        MarcaRadio: upperText(registro.MarcaRadio),
+        Anio: upperText(registro.Anio)
+      }
+    });
+  } catch (e) {
+    console.error("GET /api/clientes-datos fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.patch("/api/clientes-datos", async (req, res) => {
+  try {
+    const registro = req.body?.registro || {};
+    const original = req.body?.original || {};
+    const cl = normalizeIdentification(registro.CL);
+    const placa = normalizePlate(registro.Placa);
+    const originalPlaca = normalizePlate(original.placa);
+
+    if (!cl) {
+      return res.status(400).json({ ok: false, error: "Cedula/RUC es obligatoria" });
+    }
+
+    if (!placa) {
+      return res.status(400).json({ ok: false, error: "Placa es obligatoria" });
+    }
+
+    if (registro.Telefonos && !/^\d{10}$/.test(String(registro.Telefonos))) {
+      return res.status(400).json({ ok: false, error: "Telefonos debe tener 10 digitos numericos" });
+    }
+
+    if (
+      registro.CorreoElectronico &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(registro.CorreoElectronico))
+    ) {
+      return res.status(400).json({ ok: false, error: "CorreoElectronico no es valido" });
+    }
+
+    const { db } = getFirebase();
+    const batch = db.batch();
+    const normalized = {
+      Propietario: upperText(registro.Propietario),
+      CL: cl,
+      CLKey: cl,
+      Telefonos: upperText(registro.Telefonos),
+      CorreoElectronico: upperText(registro.CorreoElectronico),
+      Direccion: upperText(registro.Direccion),
+      Placa: placa,
+      Marca: upperText(registro.Marca),
+      Modelo: upperText(registro.Modelo),
+      Color: upperText(registro.Color),
+      MarcaRadio: upperText(registro.MarcaRadio),
+      Anio: upperText(registro.Anio),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    batch.set(
+      db.collection(CLIENTES_COLLECTION).doc(cl),
+      {
+        CL: cl,
+        Propietario: normalized.Propietario,
+        Telefonos: normalized.Telefonos,
+        CorreoElectronico: normalized.CorreoElectronico,
+        Direccion: normalized.Direccion,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+    batch.set(db.collection(CLIENTES_VEHICULOS_COLLECTION).doc(placa), normalized, { merge: true });
+
+    if (originalPlaca && originalPlaca !== placa) {
+      batch.delete(db.collection(CLIENTES_VEHICULOS_COLLECTION).doc(originalPlaca));
+    }
+
+    await batch.commit();
+
+    res.json({
+      ok: true,
+      registro: normalized
+    });
+  } catch (e) {
+    console.error("PATCH /api/clientes-datos fallo:", e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
@@ -215,6 +656,11 @@ app.get("/api/ot", async (req, res) => {
       ordenes = ordenes.filter((ot) => Boolean(ot.Cobrado) && !ot.SalidaAutorizada);
     }
 
+    ordenes = ordenes.map((ot) => ({
+      ...ot,
+      EstadoProceso: ot.Cobrado && ot.SalidaAutorizada ? "FINALIZADO" : "EN PROCESO"
+    }));
+
     res.json({ ok: true, ordenes });
   } catch (e) {
     console.error("GET /api/ot fallo:", e);
@@ -239,6 +685,132 @@ app.get("/api/ot/stats", async (req, res) => {
     });
   } catch (e) {
     console.error("GET /api/ot/stats fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/historial", async (req, res) => {
+  try {
+    const { db } = getFirebase();
+    const cl = normalizeIdentification(req.query.cl);
+    const placa = normalizePlate(req.query.placa);
+    const search = normalizeText(req.query.search);
+    const dateFrom = req.query.dateFrom ? new Date(`${req.query.dateFrom}T00:00:00`) : null;
+    const dateTo = req.query.dateTo ? new Date(`${req.query.dateTo}T23:59:59`) : null;
+    const limit = Math.min(Number(req.query.limit) || 150, 300);
+    const snapshot = await db
+      .collection(OT_COLLECTION)
+      .orderBy("FechaRecepcion", "desc")
+      .limit(limit)
+      .get();
+
+    let ordenes = snapshot.docs.map((doc) => ({
+      ID: doc.id,
+      ...doc.data()
+    }));
+
+    if (cl) {
+      ordenes = ordenes.filter((ot) => normalizeIdentification(ot.CL) === cl);
+    }
+
+    if (placa) {
+      ordenes = ordenes.filter((ot) => normalizePlate(ot.Placa) === placa);
+    }
+
+    if (dateFrom || dateTo) {
+      ordenes = ordenes.filter((ot) => matchesDateRange(ot, dateFrom, dateTo));
+    }
+
+    if (search) {
+      ordenes = ordenes.filter((ot) => {
+        const values = [
+          ot.ID,
+          ot.Propietario,
+          ot.CL,
+          ot.Placa,
+          ot.Marca,
+          ot.Modelo,
+          ot.Kilometraje,
+          ot.TrabajoRealizado,
+          ot.RepuestosUsados,
+          ot.Observaciones,
+          ot.MecanicoResponsable,
+          ot.Estado
+        ];
+
+        return values.some((value) => normalizeText(value).includes(search));
+      });
+    }
+
+    const historial = await Promise.all(
+      ordenes.map(async (ot) => {
+        const detalleSnapshot = await db.collection(OT_COLLECTION).doc(String(ot.ID)).collection("detalle").get();
+        const detalle = detalleSnapshot.docs.map((doc) => ({
+          ID: doc.id,
+          ...doc.data()
+        }));
+        const trabajos = detalle
+          .filter((item) => normalizeText(item.Tipo).includes("trabajo"))
+          .map((item) => upperText(item.Descripcion))
+          .filter(Boolean);
+        const repuestos = detalle
+          .filter((item) => normalizeText(item.Tipo).includes("repuesto"))
+          .map((item) => ({
+            Descripcion: upperText(item.Descripcion),
+            Cantidad: item.Cantidad ?? ""
+          }))
+          .filter((item) => item.Descripcion);
+
+        return {
+          ID: ot.ID,
+          Fecha: displayDate(ot.FechaEntrega || ot.FechaRecepcion),
+          FechaRecepcion: displayDate(ot.FechaRecepcion),
+          FechaEntrega: displayDate(ot.FechaEntrega),
+          Propietario: upperText(ot.Propietario),
+          CL: upperText(ot.CL),
+          Placa: upperText(ot.Placa),
+          Marca: upperText(ot.Marca),
+          Modelo: upperText(ot.Modelo),
+          Color: upperText(ot.Color),
+          Kilometraje: upperText(ot.Kilometraje),
+          MecanicoResponsable: upperText(ot.MecanicoResponsable),
+          Estado: upperText(ot.Estado),
+          EstadoProceso: processStatus(ot),
+          Cobrado: Boolean(ot.Cobrado),
+          SalidaAutorizada: Boolean(ot.SalidaAutorizada),
+          Observaciones: upperText(ot.Observaciones),
+          TrabajoRealizado: sentenceText(ot.TrabajoRealizado),
+          RepuestosUsados: sentenceText(ot.RepuestosUsados),
+          trabajos,
+          repuestos
+        };
+      })
+    );
+
+    const vehiculos = Array.from(
+      new Map(
+        historial
+          .filter((item) => item.Placa)
+          .map((item) => [
+            item.Placa,
+            {
+              Placa: item.Placa,
+              Marca: item.Marca,
+              Modelo: item.Modelo,
+              Color: item.Color
+            }
+          ])
+      ).values()
+    );
+
+    res.json({
+      ok: true,
+      total: historial.length,
+      vehiculos,
+      historial
+    });
+  } catch (e) {
+    console.error("GET /api/historial fallo:", e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
@@ -412,7 +984,7 @@ app.patch("/api/ot/:id/cobro", async (req, res) => {
     }
 
     await otRef.update({
-      ValorCobrar: valorCobrar,
+      ValorCobrar: upperText(valorCobrar),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -435,10 +1007,11 @@ app.patch("/api/ot/:id/pago", async (req, res) => {
     }
 
     await otRef.update({
-      ValorRepuestos: req.body?.ValorRepuestos ?? otSnapshot.data()?.ValorRepuestos ?? "",
+      ValorRepuestos: upperText(req.body?.ValorRepuestos ?? otSnapshot.data()?.ValorRepuestos ?? ""),
       Cobrado: true,
       FechaCobro: new Date().toISOString(),
-      EstadoCobro: "Cobrado",
+      EstadoCobro: "COBRADO",
+      Estado: otSnapshot.data()?.SalidaAutorizada ? "FINALIZADO" : otSnapshot.data()?.Estado || "RECIBIDO",
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -463,7 +1036,7 @@ app.patch("/api/ot/:id/salida", async (req, res) => {
     await otRef.update({
       SalidaAutorizada: true,
       FechaSalida: new Date().toISOString(),
-      Estado: "Entregado",
+      Estado: "FINALIZADO",
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -509,11 +1082,11 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
     }
 
     await otRef.update({
-      MecanicoResponsable: cabecera.MecanicoResponsable || "",
-      RepuestosUsados: cabecera.RepuestosUsados || "",
-      TrabajoRealizado: cabecera.TrabajoRealizado || "",
-      FechaEntrega: cabecera.FechaEntrega || "",
-      Estado: nextEstado,
+      MecanicoResponsable: upperText(cabecera.MecanicoResponsable),
+      RepuestosUsados: sentenceText(cabecera.RepuestosUsados),
+      TrabajoRealizado: sentenceText(cabecera.TrabajoRealizado),
+      FechaEntrega: upperText(cabecera.FechaEntrega),
+      Estado: upperText(nextEstado),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -559,7 +1132,8 @@ app.get("/health", (req, res) => {
       ok: true,
       storage: Boolean(process.env.FIREBASE_STORAGE_BUCKET),
       imageStorage: "disabled",
-      collection: OT_COLLECTION
+      collection: OT_COLLECTION,
+      clientesVehiculosCollection: CLIENTES_VEHICULOS_COLLECTION
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });

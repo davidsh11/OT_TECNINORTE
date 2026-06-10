@@ -8,6 +8,14 @@ function formatDate(value) {
   return String(value);
 }
 
+function CobroBadge({ cobrado }) {
+  return (
+    <span className={`payment-status-badge ${cobrado ? "paid" : "pending"}`}>
+      {cobrado ? "Cobrado" : "Pendiente de cobro"}
+    </span>
+  );
+}
+
 export default function CierreOTView({ api }) {
   const [search, setSearch] = useState("");
   const [ordenes, setOrdenes] = useState([]);
@@ -127,7 +135,8 @@ export default function CierreOTView({ api }) {
               </span>
               <span>
                 <strong>{ot.Placa || "Sin placa"}</strong>
-                <small>{ot.Cobrado ? "OT cobrada" : formatDate(ot.FechaEntrega) || formatDate(ot.FechaRecepcion)}</small>
+                <CobroBadge cobrado={Boolean(ot.Cobrado)} />
+                <small>{formatDate(ot.FechaEntrega) || formatDate(ot.FechaRecepcion)}</small>
               </span>
             </button>
           ))}
@@ -144,7 +153,7 @@ export default function CierreOTView({ api }) {
                   <h3>{selected.Propietario || "Sin propietario"}</h3>
                 </div>
                 <div className="ot-detail-actions">
-                  <strong>{selected.Cobrado ? "OT cobrada" : selected.Estado || "Finalizada"}</strong>
+                  <CobroBadge cobrado={Boolean(selected.Cobrado)} />
                   {selected.Cobrado ? <small>No editable</small> : null}
                 </div>
               </div>
@@ -212,8 +221,8 @@ export default function CierreOTView({ api }) {
                     onChange={(event) => setValorCobrar(event.target.value)}
                   />
                   {selected.Cobrado ? (
-                    <button type="button" disabled>
-                      OT cobrada
+                    <button className="paid-lock-button" type="button" disabled>
+                      Cobrado
                     </button>
                   ) : (
                     <button className="primary-button" type="button" onClick={guardarCobro} disabled={saving}>

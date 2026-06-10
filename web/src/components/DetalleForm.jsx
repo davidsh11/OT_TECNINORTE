@@ -63,7 +63,7 @@ export default function DetalleForm({
               <span className="type-pill">{item.Tipo}</span>
               <strong>{item.Descripcion}</strong>
               <span className="quantity">
-                {item.Tipo === "Repuesto" ? `Cant. ${item.Cantidad}` : "Servicio"}
+                {item.Tipo === "REPUESTO" ? `Cant. ${item.Cantidad}` : "Servicio"}
               </span>
               <button
                 className="ghost-button"

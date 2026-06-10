@@ -6,6 +6,8 @@ import BuscarOTView from "./components/BuscarOTView";
 import CierreOTView from "./components/CierreOTView";
 import CobranzaOTView from "./components/CobranzaOTView";
 import CrearOTView from "./components/CrearOTView";
+import DatosClientesView from "./components/DatosClientesView";
+import HistorialOTView from "./components/HistorialOTView";
 import HomeMenu from "./components/HomeMenu";
 import LoginView from "./components/LoginView";
 import ReportesOTView from "./components/ReportesOTView";
@@ -21,6 +23,8 @@ const LOCAL_API = "http://127.0.0.1:4000";
 const RENDER_API = "https://ot-tecninorte.onrender.com";
 const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 const API = import.meta.env.VITE_API_URL || (isLocalhost ? LOCAL_API : RENDER_API);
+const uppercaseValue = (value) => String(value || "").toUpperCase();
+const normalizeIdentification = (value) => uppercaseValue(value).replace(/\s/g, "");
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -40,16 +44,22 @@ export default function App() {
   const [ev1, setEv1] = useState(null);
   const [ev2, setEv2] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [buscandoVehiculo, setBuscandoVehiculo] = useState(false);
   const [formResetKey, setFormResetKey] = useState(0);
 
   const sigCliente = useRef(null);
   const sigRecep = useRef(null);
 
   const updateCabecera = (key, value) => {
-    let nextValue = value;
+    let nextValue = uppercaseValue(value);
 
     if (key === "Telefonos") {
       nextValue = value.replace(/\D/g, "").slice(0, 10);
+    }
+
+    if (key === "CL") {
+      nextValue = value.replace(/\s/g, "");
     }
 
     if (key === "Anio" || key === "Kilometraje") {
@@ -60,14 +70,156 @@ export default function App() {
       nextValue = value.toUpperCase().replace(/\s/g, "");
     }
 
+    if (key === "CorreoElectronico") {
+      nextValue = uppercaseValue(value).trim();
+    }
+
     setCabecera((current) => ({ ...current, [key]: nextValue }));
+  };
+
+  const buscarClientePorCedula = async () => {
+    const cl = normalizeIdentification(cabecera.CL);
+
+    if (!cl) {
+      alert("Ingrese la cedula o RUC para buscar los datos del cliente.");
+      return;
+    }
+
+    try {
+      setBuscandoCliente(true);
+      const res = await axios.get(`${API}/api/clientes/identificacion/${encodeURIComponent(cl)}`);
+      const datos = res.data?.cliente;
+
+      if (!datos) {
+        await buscarClienteEnOrdenes(cl);
+        return;
+      }
+
+      setCabecera((current) => ({
+        ...current,
+        CL: datos.CL || current.CL,
+        Propietario: datos.Propietario || current.Propietario,
+        Telefonos: datos.Telefonos || current.Telefonos,
+        CorreoElectronico: datos.CorreoElectronico || current.CorreoElectronico,
+        Direccion: datos.Direccion || current.Direccion,
+        ...(res.data?.vehiculos?.length === 1
+          ? {
+              Placa: res.data.vehiculos[0].Placa || current.Placa,
+              Marca: res.data.vehiculos[0].Marca || current.Marca,
+              Modelo: res.data.vehiculos[0].Modelo || current.Modelo,
+              Color: res.data.vehiculos[0].Color || current.Color,
+              Anio: res.data.vehiculos[0].Anio || current.Anio
+            }
+          : {})
+      }));
+    } catch (error) {
+      if (error.response?.status === 404) {
+        await buscarClienteEnOrdenes(cl);
+        return;
+      }
+
+      console.error(error);
+      await buscarClienteEnOrdenes(cl);
+    } finally {
+      setBuscandoCliente(false);
+    }
+  };
+
+  const buscarClienteEnOrdenes = async (cl) => {
+    const res = await axios.get(`${API}/api/ot`, { params: { search: cl } });
+    const orden = (res.data?.ordenes || []).find(
+      (item) => normalizeIdentification(item.CL) === normalizeIdentification(cl)
+    );
+
+    if (!orden) {
+      alert("No se encontraron datos guardados para esa cedula o RUC.");
+      return;
+    }
+
+    setCabecera((current) => ({
+      ...current,
+      CL: orden.CL || current.CL,
+      Propietario: orden.Propietario || current.Propietario,
+      Telefonos: orden.Telefonos || current.Telefonos,
+      CorreoElectronico: orden.CorreoElectronico || current.CorreoElectronico,
+      Direccion: orden.Direccion || current.Direccion,
+      Placa: orden.Placa || current.Placa,
+      Marca: orden.Marca || current.Marca,
+      Modelo: orden.Modelo || current.Modelo,
+      Color: orden.Color || current.Color,
+      MarcaRadio: orden.MarcaRadio || current.MarcaRadio,
+      Anio: orden.Anio || current.Anio,
+      Kilometraje: orden.Kilometraje || current.Kilometraje
+    }));
+  };
+
+  const buscarVehiculoPorPlaca = async () => {
+    const placa = cabecera.Placa.trim();
+
+    if (!placa) {
+      alert("Ingrese la placa para buscar los datos del cliente y vehiculo.");
+      return;
+    }
+
+    try {
+      setBuscandoVehiculo(true);
+      const res = await axios.get(`${API}/api/clientes-vehiculos/${encodeURIComponent(placa)}`);
+      const datos = res.data?.registro;
+
+      if (!datos) {
+        alert("No se encontraron datos guardados para esa placa.");
+        return;
+      }
+
+      setCabecera((current) => ({
+        ...current,
+        Propietario: datos.Propietario || current.Propietario,
+        CL: datos.CL || current.CL,
+        Telefonos: datos.Telefonos || current.Telefonos,
+        CorreoElectronico: datos.CorreoElectronico || current.CorreoElectronico,
+        Direccion: datos.Direccion || current.Direccion,
+        Marca: datos.Marca || current.Marca,
+        Modelo: datos.Modelo || current.Modelo,
+        Placa: datos.Placa || current.Placa,
+        Color: datos.Color || current.Color,
+        MarcaRadio: datos.MarcaRadio || current.MarcaRadio,
+        Anio: datos.Anio || current.Anio,
+        Kilometraje: datos.Kilometraje || current.Kilometraje
+      }));
+    } catch (error) {
+      if (error.response?.status === 404) {
+        alert("No se encontraron datos guardados para esa placa.");
+        return;
+      }
+
+      console.error(error);
+      alert("No se pudo buscar la placa en la base de datos.");
+    } finally {
+      setBuscandoVehiculo(false);
+    }
+  };
+
+  const updateNuevoTrabajo = (value) => {
+    setNuevoTrabajo(uppercaseValue(value));
+  };
+
+  const updateNuevoRepuesto = (updater) => {
+    setNuevoRepuesto((current) => {
+      const nextValue = typeof updater === "function" ? updater(current) : updater;
+
+      return {
+        ...nextValue,
+        desc: uppercaseValue(nextValue.desc),
+        cant: nextValue.cant
+      };
+    });
   };
 
   const agregarTrabajo = () => {
     if (!nuevoTrabajo.trim()) return;
     setDetalle((current) => [
       ...current,
-      { Tipo: "Trabajo", Descripcion: nuevoTrabajo.trim(), Cantidad: "" }
+      { Tipo: "TRABAJO", Descripcion: uppercaseValue(nuevoTrabajo).trim(), Cantidad: "" }
     ]);
     setNuevoTrabajo("");
   };
@@ -77,8 +229,8 @@ export default function App() {
     setDetalle((current) => [
       ...current,
       {
-        Tipo: "Repuesto",
-        Descripcion: nuevoRepuesto.desc.trim(),
+        Tipo: "REPUESTO",
+        Descripcion: uppercaseValue(nuevoRepuesto.desc).trim(),
         Cantidad: Number(nuevoRepuesto.cant) || 1
       }
     ]);
@@ -87,6 +239,24 @@ export default function App() {
 
   const quitarDetalle = (index) => {
     setDetalle((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const limpiarDatosPrecargados = () => {
+    setCabecera((current) => ({
+      ...current,
+      Propietario: "",
+      CL: "",
+      Telefonos: "",
+      CorreoElectronico: "",
+      Direccion: "",
+      Marca: "",
+      Modelo: "",
+      Placa: "",
+      Color: "",
+      MarcaRadio: "",
+      Anio: "",
+      Kilometraje: ""
+    }));
   };
 
   const limpiarFormularioOT = () => {
@@ -150,6 +320,11 @@ export default function App() {
       return;
     }
 
+    if (cabecera.CorreoElectronico && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cabecera.CorreoElectronico)) {
+      alert("Ingrese un correo electronico valido.");
+      return;
+    }
+
     if (!cabecera.Placa.trim()) {
       alert("La placa es obligatoria para guardar la OT.");
       return;
@@ -175,10 +350,13 @@ export default function App() {
       };
 
       const res = await axios.post(`${API}/api/ot`, payload);
-      const warnings = res.data.warnings || [];
+      const warnings = (res.data.warnings || []).filter(
+        (warning) => !String(warning).toLowerCase().includes("datos del cliente")
+      );
       const warningText = warnings.length ? `\n\nAviso: ${warnings.join(" ")}` : "";
+      const clienteText = res.data.clienteActualizado ? "\nDatos cliente actualizado." : "";
 
-      alert(`OT guardada. ID: ${res.data.otId}${warningText}`);
+      alert(`OT guardada. ID: ${res.data.otId}${clienteText}${warningText}`);
       await abrirPdf(pdfTab, res.data.otId, pdfCabecera);
       limpiarFormularioOT();
     } catch (error) {
@@ -221,6 +399,8 @@ export default function App() {
     inicio: ["Panel principal", "TECNINORTE"],
     crear: ["Orden de trabajo", "Nueva OT"],
     buscar: ["Consulta", "Buscar OT"],
+    datosClientes: ["Clientes", "Datos clientes"],
+    historial: ["Historial", "Trabajos realizados"],
     taller: ["Uso interno", "Taller"],
     cierre: ["Cierre", "Cierre OT"],
     cobranza: ["Cobranza", "Cobranza"],
@@ -256,6 +436,8 @@ export default function App() {
               allowedViews={allowedViews}
               onOpenCrear={() => setActiveView("crear")}
               onOpenBuscar={() => setActiveView("buscar")}
+              onOpenDatosClientes={() => setActiveView("datosClientes")}
+              onOpenHistorial={() => setActiveView("historial")}
               onOpenTaller={() => setActiveView("taller")}
               onOpenCierre={() => setActiveView("cierre")}
               onOpenCobranza={() => setActiveView("cobranza")}
@@ -279,11 +461,16 @@ export default function App() {
               ev1={ev1}
               ev2={ev2}
               guardando={guardando}
+              buscandoCliente={buscandoCliente}
+              buscandoVehiculo={buscandoVehiculo}
               sigCliente={sigCliente}
               sigRecep={sigRecep}
               onCabeceraChange={updateCabecera}
-              onNuevoTrabajoChange={setNuevoTrabajo}
-              onNuevoRepuestoChange={setNuevoRepuesto}
+              onBuscarCliente={buscarClientePorCedula}
+              onBuscarVehiculo={buscarVehiculoPorPlaca}
+              onLimpiarPrecargados={limpiarDatosPrecargados}
+              onNuevoTrabajoChange={updateNuevoTrabajo}
+              onNuevoRepuestoChange={updateNuevoRepuesto}
               onAgregarTrabajo={agregarTrabajo}
               onAgregarRepuesto={agregarRepuesto}
               onQuitarDetalle={quitarDetalle}
@@ -293,6 +480,10 @@ export default function App() {
             />
           ) : safeActiveView === "buscar" ? (
             <BuscarOTView api={API} />
+          ) : safeActiveView === "datosClientes" ? (
+            <DatosClientesView api={API} />
+          ) : safeActiveView === "historial" ? (
+            <HistorialOTView api={API} />
           ) : safeActiveView === "taller" ? (
             <TallerOTView api={API} currentUser={currentUser} />
           ) : safeActiveView === "cierre" ? (

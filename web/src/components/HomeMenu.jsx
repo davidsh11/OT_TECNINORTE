@@ -11,14 +11,6 @@ const actions = [
     handler: "onOpenCrear"
   },
   {
-    view: "buscar",
-    title: "Buscar OT",
-    description: "Consultar ordenes generadas por cliente, placa o ID.",
-    icon: "search",
-    tone: "blue",
-    handler: "onOpenBuscar"
-  },
-  {
     view: "taller",
     title: "Taller",
     description: "Actualizar mecanico, repuestos, trabajo realizado y entrega.",
@@ -49,6 +41,30 @@ const actions = [
     icon: "wrench",
     tone: "red",
     handler: "onOpenSalida"
+  },
+  {
+    view: "buscar",
+    title: "Buscar OT",
+    description: "Consultar ordenes generadas por cliente, placa o ID.",
+    icon: "search",
+    tone: "blue",
+    handler: "onOpenBuscar"
+  },
+  {
+    view: "datosClientes",
+    title: "Datos clientes",
+    description: "Buscar y actualizar datos de contacto y vehiculo.",
+    icon: "userEdit",
+    tone: "green",
+    handler: "onOpenDatosClientes"
+  },
+  {
+    view: "historial",
+    title: "Historial",
+    description: "Revisar trabajos, kilometraje y repuestos por cliente o placa.",
+    icon: "history",
+    tone: "blue",
+    handler: "onOpenHistorial"
   },
   {
     view: "reportes",
@@ -95,6 +111,27 @@ function DashboardIcon({ name }) {
       <svg {...common}>
         <circle cx="11" cy="11" r="7" />
         <path d="m20 20-4-4" />
+      </svg>
+    );
+  }
+
+  if (name === "history") {
+    return (
+      <svg {...common}>
+        <path d="M3 12a9 9 0 1 0 3-6.7" />
+        <path d="M3 4v6h6" />
+        <path d="M12 7v5l4 2" />
+      </svg>
+    );
+  }
+
+  if (name === "userEdit") {
+    return (
+      <svg {...common}>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="m16 11 5 5" />
+        <path d="m21 11-5 5" />
       </svg>
     );
   }
@@ -174,6 +211,8 @@ export default function HomeMenu({
   allowedViews,
   onOpenCrear,
   onOpenBuscar,
+  onOpenDatosClientes,
+  onOpenHistorial,
   onOpenTaller,
   onOpenCierre,
   onOpenCobranza,
@@ -183,6 +222,8 @@ export default function HomeMenu({
   const handlers = {
     onOpenCrear,
     onOpenBuscar,
+    onOpenDatosClientes,
+    onOpenHistorial,
     onOpenTaller,
     onOpenCierre,
     onOpenCobranza,

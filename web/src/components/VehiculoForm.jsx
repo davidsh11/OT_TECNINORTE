@@ -1,7 +1,7 @@
 import FormInput from "./FormInput";
 import { vehiculoFields } from "../constants/formFields";
 
-export default function VehiculoForm({ cabecera, onChange }) {
+export default function VehiculoForm({ cabecera, buscandoVehiculo, onBuscarVehiculo, onChange }) {
   return (
     <article className="panel">
       <div className="section-heading">
@@ -9,6 +9,14 @@ export default function VehiculoForm({ cabecera, onChange }) {
           <p className="eyebrow">Vehiculo</p>
           <h2>Informacion tecnica</h2>
         </div>
+        <button
+          className="ghost-button"
+          type="button"
+          disabled={buscandoVehiculo || !cabecera.Placa}
+          onClick={onBuscarVehiculo}
+        >
+          {buscandoVehiculo ? "Buscando..." : "Buscar"}
+        </button>
       </div>
       <div className="form-grid compact">
         {vehiculoFields.map((field) => (

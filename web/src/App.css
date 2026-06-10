@@ -538,6 +538,12 @@
   gap: 18px;
 }
 
+.preload-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .panel {
   margin-top: 18px;
   padding: 22px;
@@ -628,6 +634,15 @@ select:focus,
 textarea:focus {
   border-color: var(--accent-blue);
   box-shadow: 0 0 0 3px rgba(0, 74, 173, 0.12);
+}
+
+.searchable-input {
+  border-color: #aeb8c7;
+  background: #eef2f7;
+}
+
+.searchable-input:focus {
+  background: #ffffff;
 }
 
 input[readonly],
@@ -814,7 +829,8 @@ button:disabled {
 }
 
 .search-panel,
-.workshop-panel {
+.workshop-panel,
+.history-view {
   margin-top: 18px;
 }
 
@@ -873,6 +889,60 @@ button:disabled {
 .workshop-summary-meta small {
   font-size: 12px;
   font-weight: 700;
+}
+
+.ot-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  width: fit-content;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--subtle);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.ot-status-pill.status-final {
+  background: #e8f8ee;
+}
+
+.ot-status-pill.status-process {
+  background: #fff7ed;
+}
+
+.payment-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  width: fit-content;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.payment-status-badge.paid {
+  background: #e8f8ee;
+  color: var(--success);
+}
+
+.payment-status-badge.pending {
+  background: #fff7ed;
+  color: var(--warning);
+}
+
+.paid-lock-button {
+  border-color: rgba(22, 163, 74, 0.28);
+  background: #e8f8ee;
+  color: var(--success);
+  cursor: not-allowed;
 }
 
 .ot-row.active {
@@ -1025,6 +1095,199 @@ button:disabled {
 .report-panel {
   display: grid;
   gap: 18px;
+}
+
+.history-view {
+  display: grid;
+  gap: 16px;
+}
+
+.client-data-view {
+  display: grid;
+  gap: 18px;
+}
+
+.client-data-search {
+  margin-top: 0;
+}
+
+.client-data-tools {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.client-data-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-filter-panel {
+  margin-top: 0;
+}
+
+.history-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.history-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-vehicles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.history-vehicle {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--accent-blue);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.history-vehicle strong {
+  color: var(--accent);
+  font-size: 18px;
+}
+
+.history-vehicle span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.history-results {
+  display: grid;
+  gap: 12px;
+}
+
+.history-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.history-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.history-card-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.history-card-head span,
+.history-date-summary span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.history-date-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 6px;
+}
+
+.history-date-summary span {
+  display: grid;
+  gap: 2px;
+  min-width: 122px;
+}
+
+.history-date-summary strong {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.history-card-head > strong,
+.history-card-actions strong {
+  color: var(--accent-blue);
+  font-size: 20px;
+}
+
+.history-card-actions {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.history-meta {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 120px minmax(0, 1fr);
+  gap: 8px 12px;
+}
+
+.history-meta span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.history-meta strong {
+  color: var(--ink);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.history-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.history-detail-grid h4 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.history-parts {
+  display: grid;
+  gap: 6px;
+  min-height: 56px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--subtle);
+}
+
+.history-parts p {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.status-final {
+  color: var(--success) !important;
+}
+
+.status-process {
+  color: var(--warning) !important;
 }
 
 .report-filters {
@@ -1255,6 +1518,10 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.report-row .payment-status-badge {
+  justify-self: start;
+}
+
 @media (max-width: 1180px) {
   .app-shell {
     width: min(100% - 24px, 1530px);
@@ -1273,12 +1540,16 @@ button:disabled {
   .stats-row,
   .report-kpis,
   .report-filters,
-  .report-chart-grid {
+  .report-chart-grid,
+  .client-data-tools,
+  .history-filters,
+  .history-detail-grid {
     grid-template-columns: 1fr;
   }
 
   .mechanic-bar,
-  .report-row {
+  .report-row,
+  .history-meta {
     grid-template-columns: 1fr;
   }
 
@@ -1337,7 +1608,8 @@ button:disabled {
   }
 
   .workshop-actions,
-  .workshop-summary {
+  .workshop-summary,
+  .history-card-head {
     display: grid;
   }
 
