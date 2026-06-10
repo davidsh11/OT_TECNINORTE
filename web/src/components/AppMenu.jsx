@@ -4,7 +4,7 @@ const menuItems = [
   ["taller", "Taller", "wrench"],
   ["cierre", "Cierre OT", "money"],
   ["cobranza", "Cobranza", "money"],
-  ["salida", "Salida", "exit"],
+  ["salida", "Salida de taller", "exit"],
   ["buscar", "Buscar OT", "search"],
   ["datosClientes", "Datos clientes", "userEdit"],
   ["historial", "Historial", "history"],

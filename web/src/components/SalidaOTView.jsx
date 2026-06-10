@@ -78,7 +78,7 @@ export default function SalidaOTView({ api }) {
       <div className="section-heading">
         <div>
           <p className="eyebrow">Recepcion</p>
-          <h2>Salida de vehiculos cobrados</h2>
+          <h2>Salida de taller</h2>
         </div>
       </div>
 

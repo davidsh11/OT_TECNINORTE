@@ -36,8 +36,8 @@ const actions = [
   },
   {
     view: "salida",
-    title: "Salida",
-    description: "Autorizar salida de vehiculos con OT cobrada.",
+    title: "Salida de taller",
+    description: "Autorizar la salida del vehiculo cuando la OT ya esta cobrada.",
     icon: "wrench",
     tone: "red",
     handler: "onOpenSalida"

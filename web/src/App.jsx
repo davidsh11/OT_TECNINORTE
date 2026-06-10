@@ -404,7 +404,7 @@ export default function App() {
     taller: ["Uso interno", "Taller"],
     cierre: ["Cierre", "Cierre OT"],
     cobranza: ["Cobranza", "Cobranza"],
-    salida: ["Recepcion", "Salida"],
+    salida: ["Recepcion", "Salida de taller"],
     reportes: ["Reportes", "KPIs"]
   }[safeActiveView];
 
