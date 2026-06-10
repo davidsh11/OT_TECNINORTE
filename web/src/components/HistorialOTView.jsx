@@ -7,8 +7,7 @@ const emptyFilters = {
   cl: "",
   placa: "",
   dateFrom: "",
-  dateTo: "",
-  search: ""
+  dateTo: ""
 };
 
 function formatDate(value) {
@@ -114,8 +113,8 @@ export default function HistorialOTView({ api }) {
   };
 
   const buscarHistorial = async () => {
-    if (!filters.cl && !filters.placa && !filters.search && !filters.dateFrom && !filters.dateTo) {
-      alert("Ingrese cedula/RUC, placa o algun filtro para buscar el historial.");
+    if (!filters.cl && !filters.placa && !filters.dateFrom && !filters.dateTo) {
+      alert("Ingrese cedula/RUC, placa o un rango de fechas para buscar el historial.");
       return;
     }
 
@@ -129,8 +128,7 @@ export default function HistorialOTView({ api }) {
           cl: filters.cl,
           placa: filters.placa,
           dateFrom: filters.dateFrom,
-          dateTo: filters.dateTo,
-          search: filters.search
+          dateTo: filters.dateTo
         }
       });
 
@@ -152,7 +150,7 @@ export default function HistorialOTView({ api }) {
   };
 
   const buscarHistorialDesdeOrdenes = async () => {
-    const searchValue = filters.placa || filters.cl || filters.search;
+    const searchValue = filters.placa || filters.cl;
     const res = await axios.get(`${api}/api/ot`, {
       params: {
         search: searchValue || undefined,
@@ -163,29 +161,10 @@ export default function HistorialOTView({ api }) {
     const filteredOrdenes = baseOrdenes.filter((ot) => {
       const matchesCl = filters.cl ? normalizeInput(ot.CL) === normalizeInput(filters.cl) : true;
       const matchesPlaca = filters.placa ? normalizeInput(ot.Placa) === normalizeInput(filters.placa) : true;
-      const matchesSearch = filters.search
-        ? [
-            ot.ID,
-            ot.Propietario,
-            ot.CL,
-            ot.Placa,
-            ot.Marca,
-            ot.Modelo,
-            ot.Kilometraje,
-            ot.TrabajoRealizado,
-            ot.RepuestosUsados,
-          ot.Observaciones,
-          ot.MecanicoResponsable,
-          ot.Estado,
-          ot.Cobrado ? "FINALIZADO COBRADO" : "EN PROCESO",
-          ot.SalidaAutorizada ? "SALIDA AUTORIZADA" : ""
-          ].some((value) => normalizeText(value).includes(normalizeText(filters.search)))
-        : true;
 
       return (
         matchesCl &&
         matchesPlaca &&
-        matchesSearch &&
         dateInRange(ot.FechaEntrega || ot.FechaRecepcion, filters.dateFrom, filters.dateTo)
       );
     });
@@ -631,10 +610,6 @@ export default function HistorialOTView({ api }) {
           <label className="field">
             <span>Hasta</span>
             <input type="date" value={filters.dateTo} onChange={(event) => updateFilter("dateTo", event.target.value)} />
-          </label>
-          <label className="field">
-            <span>Filtro</span>
-            <input value={filters.search} onChange={(event) => updateFilter("search", event.target.value)} />
           </label>
           <div className="history-filter-actions">
             <button className="primary-button" type="button" disabled={loading} onClick={buscarHistorial}>
