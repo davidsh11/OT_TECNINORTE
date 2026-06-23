@@ -30,7 +30,7 @@ export default function SalidaOTView({ api }) {
       setOrdenes(res.data.ordenes || []);
     } catch (requestError) {
       console.error(requestError);
-      setError("No se pudieron cargar las OT cobradas.");
+      setError("No se pudieron cargar las OT listas para salida.");
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,7 @@ export default function SalidaOTView({ api }) {
 
       <div className="search-tools">
         <input
-          placeholder="Buscar cobradas por ID, cliente, cedula/RUC o placa"
+          placeholder="Buscar listas para salida por ID, cliente, cedula/RUC o placa"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           onKeyDown={(event) => event.key === "Enter" && cargarCobradas()}
@@ -98,9 +98,9 @@ export default function SalidaOTView({ api }) {
 
       <div className="ot-browser">
         <div className="ot-list">
-          {loading && ordenes.length === 0 ? <p className="empty-state">Cargando OT cobradas...</p> : null}
+          {loading && ordenes.length === 0 ? <p className="empty-state">Cargando OT listas para salida...</p> : null}
           {!loading && ordenes.length === 0 ? (
-            <p className="empty-state">No hay OT cobradas pendientes de salida.</p>
+            <p className="empty-state">No hay OT listas para autorizar salida.</p>
           ) : null}
           {ordenes.map((ot) => (
             <button
@@ -112,7 +112,7 @@ export default function SalidaOTView({ api }) {
               <span>
                 <strong>{ot.ID}</strong>
                 <small>{ot.Propietario || "Sin propietario"}</small>
-                <small>Cobrado: {formatDate(ot.FechaCobro) || "Si"}</small>
+                <small>{ot.PagoPendienteEmpresa ? "Empresa con pago pendiente" : `Cobrado: ${formatDate(ot.FechaCobro) || "Si"}`}</small>
               </span>
               <span>
                 <strong>{ot.Placa || "Sin placa"}</strong>
@@ -124,7 +124,7 @@ export default function SalidaOTView({ api }) {
 
         <div className="ot-detail">
           {!selected ? (
-            <p className="empty-state">Seleccione una OT cobrada para autorizar la salida.</p>
+            <p className="empty-state">Seleccione una OT lista para autorizar la salida.</p>
           ) : (
             <>
               <div className="ot-detail-header">
@@ -133,7 +133,7 @@ export default function SalidaOTView({ api }) {
                   <h3>{selected.Propietario || "Sin propietario"}</h3>
                 </div>
                 <div className="ot-detail-actions">
-                  <strong>Cobrado</strong>
+                  <strong>{selected.PagoPendienteEmpresa ? "Empresa pendiente" : "Cobrado"}</strong>
                 </div>
               </div>
 
@@ -148,8 +148,12 @@ export default function SalidaOTView({ api }) {
                 </strong>
                 <span>Placa</span>
                 <strong>{selected.Placa || "-"}</strong>
-                <span>Fecha cobro</span>
-                <strong>{formatDate(selected.FechaCobro) || "-"}</strong>
+                <span>Mecanico</span>
+                <strong>{selected.MecanicoResponsable || "Sin mecanico asignado"}</strong>
+                <span>Estado pago</span>
+                <strong>{selected.PagoPendienteEmpresa ? "EMPRESA PENDIENTE" : "COBRADO"}</strong>
+                <span>{selected.PagoPendienteEmpresa ? "Fecha pendiente" : "Fecha cobro"}</span>
+                <strong>{formatDate(selected.FechaCobro || selected.FechaPagoPendienteEmpresa) || "-"}</strong>
               </div>
 
               <h4>Observaciones</h4>
@@ -168,3 +172,4 @@ export default function SalidaOTView({ api }) {
     </section>
   );
 }
+

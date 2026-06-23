@@ -2,6 +2,7 @@ const menuItems = [
   ["inicio", "Inicio", "home"],
   ["crear", "Nueva OT", "filePlus"],
   ["taller", "Taller", "wrench"],
+  ["seguimiento", "Seguimiento", "chart"],
   ["cierre", "Cierre OT", "money"],
   ["cobranza", "Cobranza", "money"],
   ["salida", "Salida de taller", "exit"],

@@ -12,6 +12,7 @@ import HomeMenu from "./components/HomeMenu";
 import LoginView from "./components/LoginView";
 import ReportesOTView from "./components/ReportesOTView";
 import SalidaOTView from "./components/SalidaOTView";
+import SeguimientoMecanicosView from "./components/SeguimientoMecanicosView";
 import TallerOTView from "./components/TallerOTView";
 import { initialCabecera } from "./constants/formFields";
 import { users } from "./constants/users";
@@ -402,6 +403,7 @@ export default function App() {
     datosClientes: ["Clientes", "Datos clientes"],
     historial: ["Historial", "Trabajos realizados"],
     taller: ["Uso interno", "Taller"],
+    seguimiento: ["Control de taller", "Seguimiento"],
     cierre: ["Cierre", "Cierre OT"],
     cobranza: ["Cobranza", "Cobranza"],
     salida: ["Recepcion", "Salida de taller"],
@@ -439,6 +441,7 @@ export default function App() {
               onOpenDatosClientes={() => setActiveView("datosClientes")}
               onOpenHistorial={() => setActiveView("historial")}
               onOpenTaller={() => setActiveView("taller")}
+              onOpenSeguimiento={() => setActiveView("seguimiento")}
               onOpenCierre={() => setActiveView("cierre")}
               onOpenCobranza={() => setActiveView("cobranza")}
               onOpenSalida={() => setActiveView("salida")}
@@ -486,6 +489,8 @@ export default function App() {
             <HistorialOTView api={API} />
           ) : safeActiveView === "taller" ? (
             <TallerOTView api={API} currentUser={currentUser} />
+          ) : safeActiveView === "seguimiento" ? (
+            <SeguimientoMecanicosView api={API} />
           ) : safeActiveView === "cierre" ? (
             <CierreOTView api={API} />
           ) : safeActiveView === "cobranza" ? (
@@ -500,3 +505,4 @@ export default function App() {
     </main>
   );
 }
+

@@ -154,7 +154,7 @@ export default function TallerOTView({ api, currentUser }) {
         TrabajoRealizado: sentenceText(form.TrabajoRealizado)
       };
       const payload = canAssign && !isAdmin ? formattedForm : { ...formattedForm, Estado: "Finalizado" };
-      await axios.patch(`${api}/api/ot/${selected.ID}/taller`, {
+      const res = await axios.patch(`${api}/api/ot/${selected.ID}/taller`, {
         cabecera: payload,
         userRole: currentUser?.role
       });

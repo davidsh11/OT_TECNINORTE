@@ -1,3 +1,19 @@
+function EvidenceCapture({ label, file, onChange }) {
+  return (
+    <label className="upload-box camera-capture-box">
+      <span>{label}</span>
+      <strong>Tomar foto</strong>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(event) => onChange(event.target.files?.[0] || null)}
+      />
+      <small>{file?.name || "Foto pendiente"}</small>
+    </label>
+  );
+}
+
 export default function EvidenciasForm({ ev1, ev2, onEv1Change, onEv2Change }) {
   return (
     <article className="panel">
@@ -8,24 +24,8 @@ export default function EvidenciasForm({ ev1, ev2, onEv1Change, onEv2Change }) {
         </div>
       </div>
       <div className="evidence-grid">
-        <label className="upload-box">
-          <span>Evidencia 1</span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) => onEv1Change(event.target.files?.[0] || null)}
-          />
-          <small>{ev1?.name || "Sin archivo seleccionado"}</small>
-        </label>
-        <label className="upload-box">
-          <span>Evidencia 2</span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) => onEv2Change(event.target.files?.[0] || null)}
-          />
-          <small>{ev2?.name || "Sin archivo seleccionado"}</small>
-        </label>
+        <EvidenceCapture label="Evidencia 1" file={ev1} onChange={onEv1Change} />
+        <EvidenceCapture label="Evidencia 2" file={ev2} onChange={onEv2Change} />
       </div>
     </article>
   );

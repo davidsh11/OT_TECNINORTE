@@ -18,6 +18,7 @@ export default function CobranzaOTView({ api }) {
   const [selected, setSelected] = useState(null);
   const [detalle, setDetalle] = useState([]);
   const [valorRepuestos, setValorRepuestos] = useState("");
+  const [esEmpresa, setEsEmpresa] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -50,6 +51,7 @@ export default function CobranzaOTView({ api }) {
       setSelected(res.data.ot);
       setDetalle(res.data.detalle || []);
       setValorRepuestos(res.data.ot?.ValorRepuestos || "");
+      setEsEmpresa(Boolean(res.data.ot?.EsEmpresa));
     } catch (requestError) {
       console.error(requestError);
       setError("No se pudo cargar la OT para cobranza.");
@@ -58,21 +60,31 @@ export default function CobranzaOTView({ api }) {
     }
   };
 
-  const marcarCobrado = async () => {
+  const registrarPago = async (pagoPendienteEmpresa = false) => {
     if (!selected?.ID) return;
+
+    if (pagoPendienteEmpresa && !esEmpresa) {
+      alert("Solo puede dejar pago pendiente cuando la OT pertenece a una empresa.");
+      return;
+    }
 
     try {
       setSaving(true);
       setError("");
-      await axios.patch(`${api}/api/ot/${selected.ID}/pago`, { ValorRepuestos: valorRepuestos });
-      alert("OT marcada como cobrada.");
+      await axios.patch(`${api}/api/ot/${selected.ID}/pago`, {
+        ValorRepuestos: valorRepuestos,
+        EsEmpresa: esEmpresa,
+        PagoPendienteEmpresa: pagoPendienteEmpresa
+      });
+      alert(pagoPendienteEmpresa ? "OT marcada como empresa con pago pendiente." : "OT marcada como cobrada.");
       setSelected(null);
       setDetalle([]);
       setValorRepuestos("");
+      setEsEmpresa(false);
       await cargarPendientes();
     } catch (requestError) {
       console.error(requestError);
-      setError("No se pudo marcar la OT como cobrada.");
+      setError(pagoPendienteEmpresa ? "No se pudo dejar el pago pendiente para empresa." : "No se pudo marcar la OT como cobrada.");
     } finally {
       setSaving(false);
     }
@@ -221,13 +233,29 @@ export default function CobranzaOTView({ api }) {
                     />
                   </label>
                 </div>
+                <label className="company-payment-toggle">
+                  <input
+                    type="checkbox"
+                    checked={esEmpresa}
+                    onChange={(event) => setEsEmpresa(event.target.checked)}
+                  />
+                  <span>Es empresa</span>
+                  <small>Permite dejar el pago pendiente y habilitar salida.</small>
+                </label>
               </section>
 
-              <div className="workshop-actions">
-                <span>Al marcar cobrado, recepcion podra autorizar la salida del vehiculo.</span>
-                <button className="primary-button" type="button" onClick={marcarCobrado} disabled={saving}>
-                  {saving ? "Guardando..." : "Marcar cobrado"}
-                </button>
+              <div className="workshop-actions cobranza-actions">
+                <span>
+                  Si no es empresa, debe marcarse como cobrado para autorizar salida. Si es empresa, puede quedar pendiente.
+                </span>
+                <div className="payment-action-buttons">
+                  <button className="secondary-button" type="button" onClick={() => registrarPago(true)} disabled={saving || !esEmpresa}>
+                    {saving ? "Guardando..." : "Dejar pendiente empresa"}
+                  </button>
+                  <button className="primary-button" type="button" onClick={() => registrarPago(false)} disabled={saving}>
+                    {saving ? "Guardando..." : "Marcar cobrado"}
+                  </button>
+                </div>
               </div>
             </>
           )}

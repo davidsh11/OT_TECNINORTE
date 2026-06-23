@@ -19,6 +19,14 @@ const actions = [
     handler: "onOpenTaller"
   },
   {
+    view: "seguimiento",
+    title: "Seguimiento",
+    description: "Ver carga, avance y pendientes por mecanico.",
+    icon: "check",
+    tone: "blue",
+    handler: "onOpenSeguimiento"
+  },
+  {
     view: "cierre",
     title: "Cierre OT",
     description: "Revisar trabajos finalizados y registrar el valor a cobrar.",
@@ -75,7 +83,6 @@ const actions = [
     handler: "onOpenReportes"
   }
 ];
-
 const defaultStats = [
   ["Ordenes totales", "0", "Registradas", "clipboard"],
   ["Ordenes completadas", "0", "Entregadas", "check"],
@@ -214,6 +221,7 @@ export default function HomeMenu({
   onOpenDatosClientes,
   onOpenHistorial,
   onOpenTaller,
+  onOpenSeguimiento,
   onOpenCierre,
   onOpenCobranza,
   onOpenSalida,
@@ -225,6 +233,7 @@ export default function HomeMenu({
     onOpenDatosClientes,
     onOpenHistorial,
     onOpenTaller,
+    onOpenSeguimiento,
     onOpenCierre,
     onOpenCobranza,
     onOpenSalida,
@@ -325,3 +334,4 @@ export default function HomeMenu({
     </section>
   );
 }
+

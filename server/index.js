@@ -150,6 +150,52 @@ function processStatus(ot) {
   return ot?.Cobrado && ot?.SalidaAutorizada ? "FINALIZADO" : "EN PROCESO";
 }
 
+function mechanicTrackingStatus(ot) {
+  const mechanic = upperText(ot.MecanicoResponsable || ot.MecanicoAsignadoNombre || ot.MecanicoAsignado);
+  const estado = normalizeText(ot.Estado);
+  const delivered = isCompleted(ot);
+  const closed = Boolean(ot.SalidaAutorizada);
+  const charged = Boolean(ot.Cobrado);
+  const hasWorkshopProgress = Boolean(
+    normalizeText(ot.TrabajoRealizado) ||
+      normalizeText(ot.RepuestosUsados) ||
+      ["en proceso", "realizando", "proceso", "en taller"].includes(estado)
+  );
+
+  if (!mechanic && !delivered && !charged && !closed) return "sin_asignar";
+  if (delivered || charged || closed) return "finalizada";
+  if (hasWorkshopProgress) return "realizando";
+  return "pendiente";
+}
+
+function trackingOtPayload(ot) {
+  const mechanic = upperText(ot.MecanicoResponsable || ot.MecanicoAsignadoNombre || ot.MecanicoAsignado);
+  const status = mechanicTrackingStatus(ot);
+
+  return {
+    ID: ot.ID,
+    Propietario: upperText(ot.Propietario),
+    CL: upperText(ot.CL),
+    Placa: upperText(ot.Placa),
+    Marca: upperText(ot.Marca),
+    Modelo: upperText(ot.Modelo),
+    MecanicoResponsable: mechanic,
+    Estado: upperText(ot.Estado || "RECIBIDO"),
+    EstadoSeguimiento: status,
+    FechaRecepcion: displayDate(ot.FechaRecepcion),
+    FechaEntrega: displayDate(ot.FechaEntrega),
+    FechaCobro: displayDate(ot.FechaCobro),
+    FechaSalida: displayDate(ot.FechaSalida),
+    TrabajoRealizado: sentenceText(ot.TrabajoRealizado),
+    RepuestosUsados: sentenceText(ot.RepuestosUsados),
+    Cobrado: Boolean(ot.Cobrado),
+    EsEmpresa: Boolean(ot.EsEmpresa),
+    PagoPendienteEmpresa: Boolean(ot.PagoPendienteEmpresa),
+    FechaPagoPendienteEmpresa: displayDate(ot.FechaPagoPendienteEmpresa),
+    SalidaAutorizada: Boolean(ot.SalidaAutorizada)
+  };
+}
+
 const MONTH_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 function buildCabecera(cabecera, otId) {
@@ -173,6 +219,9 @@ function buildCabecera(cabecera, otId) {
     TrabajoRealizado: sentenceText(cabecera?.TrabajoRealizado),
     ValorCobrar: upperText(cabecera?.ValorCobrar),
     ValorRepuestos: upperText(cabecera?.ValorRepuestos),
+    EsEmpresa: Boolean(cabecera?.EsEmpresa),
+    PagoPendienteEmpresa: Boolean(cabecera?.PagoPendienteEmpresa),
+    FechaPagoPendienteEmpresa: upperText(cabecera?.FechaPagoPendienteEmpresa),
     Cobrado: Boolean(cabecera?.Cobrado),
     FechaCobro: upperText(cabecera?.FechaCobro),
     SalidaAutorizada: Boolean(cabecera?.SalidaAutorizada),
@@ -645,7 +694,7 @@ app.get("/api/ot", async (req, res) => {
     }
 
     if (chargeReady) {
-      ordenes = ordenes.filter((ot) => isCompleted(ot) && hasChargeValue(ot) && !ot.Cobrado);
+      ordenes = ordenes.filter((ot) => isCompleted(ot) && hasChargeValue(ot) && !ot.Cobrado && !ot.PagoPendienteEmpresa);
     }
 
     if (paid) {
@@ -653,7 +702,7 @@ app.get("/api/ot", async (req, res) => {
     }
 
     if (pendingExit) {
-      ordenes = ordenes.filter((ot) => Boolean(ot.Cobrado) && !ot.SalidaAutorizada);
+      ordenes = ordenes.filter((ot) => (Boolean(ot.Cobrado) || Boolean(ot.PagoPendienteEmpresa)) && !ot.SalidaAutorizada);
     }
 
     ordenes = ordenes.map((ot) => ({
@@ -664,6 +713,70 @@ app.get("/api/ot", async (req, res) => {
     res.json({ ok: true, ordenes });
   } catch (e) {
     console.error("GET /api/ot fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/ot/seguimiento", async (req, res) => {
+  try {
+    const { db } = getFirebase();
+    const limit = Math.min(Number(req.query.limit) || 500, 800);
+    const snapshot = await db
+      .collection(OT_COLLECTION)
+      .orderBy("FechaRecepcion", "desc")
+      .limit(limit)
+      .get();
+
+    const ordenes = snapshot.docs.map((doc) => trackingOtPayload({
+      ID: doc.id,
+      ...doc.data()
+    }));
+    const pendientesSalida = ordenes.filter((ot) => (ot.Cobrado || ot.PagoPendienteEmpresa) && !ot.SalidaAutorizada);
+    const activas = ordenes.filter((ot) => !ot.Cobrado && !ot.PagoPendienteEmpresa && !ot.SalidaAutorizada && ot.EstadoSeguimiento !== "finalizada");
+    const mecanicosMap = new Map();
+
+    ordenes
+      .filter((ot) => ot.MecanicoResponsable)
+      .forEach((ot) => {
+        const name = ot.MecanicoResponsable;
+        const current = mecanicosMap.get(name) || {
+          mecanico: name,
+          asignadas: 0,
+          realizando: 0,
+          pendientes: 0,
+          finalizadas: 0,
+          ots: []
+        };
+
+        current.asignadas += ot.EstadoSeguimiento === "finalizada" ? 0 : 1;
+        current.realizando += ot.EstadoSeguimiento === "realizando" ? 1 : 0;
+        current.pendientes += ot.EstadoSeguimiento === "pendiente" ? 1 : 0;
+        current.finalizadas += ot.EstadoSeguimiento === "finalizada" ? 1 : 0;
+        if (ot.EstadoSeguimiento !== "finalizada") current.ots.push(ot);
+        mecanicosMap.set(name, current);
+      });
+
+    const mecanicos = Array.from(mecanicosMap.values()).sort((a, b) => {
+      const loadDiff = b.asignadas - a.asignadas;
+      return loadDiff || a.mecanico.localeCompare(b.mecanico);
+    });
+
+    res.json({
+      ok: true,
+      resumen: {
+        ingresoTaller: activas.length,
+        sinAsignar: activas.filter((ot) => ot.EstadoSeguimiento === "sin_asignar").length,
+        asignadas: activas.filter((ot) => ot.MecanicoResponsable).length,
+        realizando: activas.filter((ot) => ot.EstadoSeguimiento === "realizando").length,
+        pendientes: activas.filter((ot) => ot.EstadoSeguimiento === "pendiente").length,
+        pendientesSalida: pendientesSalida.length
+      },
+      mecanicos,
+      ordenes: activas,
+      pendientesSalida
+    });
+  } catch (e) {
+    console.error("GET /api/ot/seguimiento fallo:", e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
@@ -1006,11 +1119,24 @@ app.patch("/api/ot/:id/pago", async (req, res) => {
       return res.status(404).json({ ok: false, error: "OT no encontrada" });
     }
 
+    const isCompany = Boolean(req.body?.EsEmpresa);
+    const pendingCompanyPayment = Boolean(req.body?.PagoPendienteEmpresa);
+
+    if (pendingCompanyPayment && !isCompany) {
+      return res.status(400).json({
+        ok: false,
+        error: "Solo una empresa puede quedar con pago pendiente para autorizar salida"
+      });
+    }
+
     await otRef.update({
       ValorRepuestos: upperText(req.body?.ValorRepuestos ?? otSnapshot.data()?.ValorRepuestos ?? ""),
-      Cobrado: true,
-      FechaCobro: new Date().toISOString(),
-      EstadoCobro: "COBRADO",
+      EsEmpresa: isCompany,
+      PagoPendienteEmpresa: pendingCompanyPayment,
+      FechaPagoPendienteEmpresa: pendingCompanyPayment ? new Date().toISOString() : "",
+      Cobrado: pendingCompanyPayment ? false : true,
+      FechaCobro: pendingCompanyPayment ? "" : new Date().toISOString(),
+      EstadoCobro: pendingCompanyPayment ? "PENDIENTE_EMPRESA" : "COBRADO",
       Estado: otSnapshot.data()?.SalidaAutorizada ? "FINALIZADO" : otSnapshot.data()?.Estado || "RECIBIDO",
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
@@ -1031,6 +1157,16 @@ app.patch("/api/ot/:id/salida", async (req, res) => {
 
     if (!otSnapshot.exists) {
       return res.status(404).json({ ok: false, error: "OT no encontrada" });
+    }
+
+    const currentOt = otSnapshot.data() || {};
+    const canExit = Boolean(currentOt.Cobrado) || Boolean(currentOt.PagoPendienteEmpresa);
+
+    if (!canExit) {
+      return res.status(409).json({
+        ok: false,
+        error: "La salida solo se puede autorizar si la OT esta cobrada o si es empresa con pago pendiente"
+      });
     }
 
     await otRef.update({
@@ -1081,8 +1217,11 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       return res.status(400).json({ ok: false, error: "TrabajoRealizado es obligatorio para finalizar la OT" });
     }
 
+    const assignedMechanic = upperText(cabecera.MecanicoResponsable);
+    const previousMechanic = upperText(currentOt.MecanicoResponsable);
+
     await otRef.update({
-      MecanicoResponsable: upperText(cabecera.MecanicoResponsable),
+      MecanicoResponsable: assignedMechanic,
       RepuestosUsados: sentenceText(cabecera.RepuestosUsados),
       TrabajoRealizado: sentenceText(cabecera.TrabajoRealizado),
       FechaEntrega: upperText(cabecera.FechaEntrega),
@@ -1090,7 +1229,8 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    res.json({ ok: true, otId: id });
+    const responsePayload = { ok: true, otId: id };
+    res.json(responsePayload);
   } catch (e) {
     console.error("PATCH /api/ot/:id/taller fallo:", e);
     res.status(500).json({ ok: false, error: e.message });
@@ -1144,3 +1284,8 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`API corriendo en http://localhost:${PORT}`);
   console.log(`Firestore collection: ${OT_COLLECTION}`);
 });
+
+
+
+
+
