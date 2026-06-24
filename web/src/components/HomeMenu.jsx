@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import axios from "axios";
 
 const actions = [
@@ -81,9 +81,16 @@ const actions = [
     icon: "file",
     tone: "blue",
     handler: "onOpenReportes"
+  },
+  {
+    view: "usuarios",
+    title: "Usuarios",
+    description: "Restablecer claves y activar o desactivar accesos.",
+    icon: "userEdit",
+    tone: "red",
+    handler: "onOpenUsuarios"
   }
-];
-const defaultStats = [
+];const defaultStats = [
   ["Ordenes totales", "0", "Registradas", "clipboard"],
   ["Ordenes completadas", "0", "Entregadas", "check"],
   ["Ordenes en proceso", "0", "En taller", "clock"]
@@ -225,7 +232,8 @@ export default function HomeMenu({
   onOpenCierre,
   onOpenCobranza,
   onOpenSalida,
-  onOpenReportes
+  onOpenReportes,
+  onOpenUsuarios
 }) {
   const handlers = {
     onOpenCrear,
@@ -237,7 +245,8 @@ export default function HomeMenu({
     onOpenCierre,
     onOpenCobranza,
     onOpenSalida,
-    onOpenReportes
+    onOpenReportes,
+    onOpenUsuarios
   };
   const primaryAction = actions.find((action) => allowedViews.includes(action.view));
   const [stats, setStats] = useState(defaultStats);
@@ -334,4 +343,5 @@ export default function HomeMenu({
     </section>
   );
 }
+
 

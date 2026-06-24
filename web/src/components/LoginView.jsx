@@ -1,23 +1,27 @@
-import { useState } from "react";
+﻿import { useState } from "react";
+import axios from "axios";
 import TecniNorteLogo from "./TecniNorteLogo";
-import { authenticateUser } from "../constants/users";
 
-export default function LoginView({ onLogin }) {
+export default function LoginView({ api, onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const submitLogin = (event) => {
+  const submitLogin = async (event) => {
     event.preventDefault();
-    const user = authenticateUser(username, password);
 
-    if (!user) {
-      setError("Usuario o clave incorrectos.");
-      return;
+    try {
+      setLoading(true);
+      setError("");
+      const res = await axios.post(`${api}/api/auth/login`, { username, password });
+      onLogin(res.data.user);
+    } catch (requestError) {
+      console.error(requestError);
+      setError(requestError.response?.data?.error || "Usuario o clave incorrectos.");
+    } finally {
+      setLoading(false);
     }
-
-    setError("");
-    onLogin(user);
   };
 
   return (
@@ -45,8 +49,8 @@ export default function LoginView({ onLogin }) {
 
           {error ? <p className="error-state">{error}</p> : null}
 
-          <button className="primary-button" type="submit">
-            Ingresar
+          <button className="primary-button" type="submit" disabled={loading}>
+            {loading ? "Ingresando..." : "Ingresar"}
           </button>
         </form>
       </section>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import axios from "axios";
 import { mechanics } from "../constants/users";
 import TrabajoRealizadoForm from "./TrabajoRealizadoForm";
@@ -290,6 +290,36 @@ export default function TallerOTView({ api, currentUser }) {
             </div>
           </div>
 
+          <section className="panel workshop-vehicle-panel">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Vehiculo</p>
+                <h2>Detalle del vehiculo</h2>
+              </div>
+            </div>
+            <div className="read-grid">
+              <span>Placa</span>
+              <strong>{selected.Placa || "-"}</strong>
+              <span>Marca</span>
+              <strong>{selected.Marca || "-"}</strong>
+              <span>Modelo</span>
+              <strong>{selected.Modelo || "-"}</strong>
+              <span>Color</span>
+              <strong>{selected.Color || "-"}</strong>
+              <span>Anio</span>
+              <strong>{selected.Anio || "-"}</strong>
+              <span>Kilometraje</span>
+              <strong>{selected.Kilometraje || "-"}</strong>
+              <span>Propietario</span>
+              <strong>{selected.Propietario || "-"}</strong>
+              <span>CL</span>
+              <strong>{selected.CL || "-"}</strong>
+              <span>Telefono</span>
+              <strong>{selected.Telefonos || "-"}</strong>
+            </div>
+          </section>
+
+
           {isMechanic ? (
             <section className="panel start-work-panel">
               <div className="section-heading">
@@ -398,3 +428,4 @@ export default function TallerOTView({ api, currentUser }) {
     </section>
   );
 }
+

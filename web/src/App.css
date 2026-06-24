@@ -2024,3 +2024,86 @@ button:disabled {
 .camera-capture-box small {
   padding-top: 4px;
 }
+
+.users-admin-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.users-admin-list {
+  display: grid;
+  gap: 10px;
+}
+
+.user-admin-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 260px) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.user-admin-row.inactive {
+  background: #f8fafc;
+  opacity: 0.78;
+}
+
+.user-admin-row > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.user-admin-row strong {
+  color: var(--ink);
+}
+
+.user-admin-row span,
+.user-admin-row small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.user-status-badge {
+  justify-self: start;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-blue) !important;
+  font-weight: 900 !important;
+}
+
+.user-admin-row.inactive .user-status-badge {
+  background: #fee2e2;
+  color: #b91c1c !important;
+}
+
+.compact-field {
+  gap: 6px;
+}
+
+.user-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.danger-button {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+@media (max-width: 900px) {
+  .user-admin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .user-admin-actions {
+    justify-content: stretch;
+  }
+}

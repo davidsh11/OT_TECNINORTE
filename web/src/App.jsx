@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import axios from "axios";
 import AppMenu from "./components/AppMenu";
 import BrandHeader from "./components/BrandHeader";
@@ -14,6 +14,7 @@ import ReportesOTView from "./components/ReportesOTView";
 import SalidaOTView from "./components/SalidaOTView";
 import SeguimientoMecanicosView from "./components/SeguimientoMecanicosView";
 import TallerOTView from "./components/TallerOTView";
+import UsuariosAdminView from "./components/UsuariosAdminView";
 import { initialCabecera } from "./constants/formFields";
 import { users } from "./constants/users";
 import { saveOtMedia } from "./utils/localOtMedia";
@@ -32,6 +33,7 @@ export default function App() {
     const savedUsername = localStorage.getItem("tecninorte-user");
     const savedRole = localStorage.getItem("tecninorte-role");
     return (
+      JSON.parse(localStorage.getItem("tecninorte-user-data") || "null") ||
       users.find((user) => user.username === savedUsername) ||
       users.find((user) => user.role === savedRole) ||
       null
@@ -378,6 +380,7 @@ export default function App() {
   const login = (user) => {
     localStorage.setItem("tecninorte-user", user.username);
     localStorage.setItem("tecninorte-role", user.role);
+    localStorage.setItem("tecninorte-user-data", JSON.stringify(user));
     setCurrentUser(user);
     setActiveView("inicio");
   };
@@ -385,12 +388,13 @@ export default function App() {
   const logout = () => {
     localStorage.removeItem("tecninorte-user");
     localStorage.removeItem("tecninorte-role");
+    localStorage.removeItem("tecninorte-user-data");
     setCurrentUser(null);
     setActiveView("inicio");
   };
 
   if (!currentUser) {
-    return <LoginView onLogin={login} />;
+    return <LoginView api={API} onLogin={login} />;
   }
 
   const allowedViews = currentUser.allowedViews;
@@ -407,7 +411,8 @@ export default function App() {
     cierre: ["Cierre", "Cierre OT"],
     cobranza: ["Cobranza", "Cobranza"],
     salida: ["Recepcion", "Salida de taller"],
-    reportes: ["Reportes", "KPIs"]
+    reportes: ["Reportes", "KPIs"],
+    usuarios: ["Administracion", "Usuarios"]
   }[safeActiveView];
 
   return (
@@ -446,6 +451,7 @@ export default function App() {
               onOpenCobranza={() => setActiveView("cobranza")}
               onOpenSalida={() => setActiveView("salida")}
               onOpenReportes={() => setActiveView("reportes")}
+              onOpenUsuarios={() => setActiveView("usuarios")}
             />
           ) : (
             <div className="view-heading">
@@ -499,6 +505,8 @@ export default function App() {
             <SalidaOTView api={API} />
           ) : safeActiveView === "reportes" ? (
             <ReportesOTView api={API} />
+          ) : safeActiveView === "usuarios" ? (
+            <UsuariosAdminView api={API} />
           ) : null}
         </section>
       </div>

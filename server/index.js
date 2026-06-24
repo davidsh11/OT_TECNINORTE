@@ -1,4 +1,4 @@
-console.log("BOOT:", __filename);
+﻿console.log("BOOT:", __filename);
 
 const express = require("express");
 const cors = require("cors");
@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 4000;
 const CLIENTES_COLLECTION = process.env.FIRESTORE_CLIENTES_COLLECTION || "Clientes";
 const CLIENTES_VEHICULOS_COLLECTION =
   process.env.FIRESTORE_CLIENTES_VEHICULOS_COLLECTION || "ClientesVehiculos";
+const SYSTEM_USERS_COLLECTION = process.env.SYSTEM_USERS_COLLECTION || "UsuariosSistema";
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
@@ -200,6 +201,53 @@ function trackingOtPayload(ot) {
 
 const MONTH_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
+const DEFAULT_SYSTEM_USERS = [
+  { username: "recepcion", password: "1234", role: "recepcion", name: "Recepcion", allowedViews: ["inicio", "crear", "buscar", "historial", "seguimiento", "salida"] },
+  { username: "cobranza", password: "1234", role: "cobranza", name: "Cobranza", allowedViews: ["inicio", "datosClientes", "historial", "cobranza", "reportes"] },
+  { username: "jefe", password: "1234", role: "jefe_taller", name: "Jefe de taller", allowedViews: ["inicio", "historial", "taller", "seguimiento", "cierre", "reportes"], canAssignOt: true },
+  { username: "angelf", password: "1234", role: "mecanico", name: "ANGELF", mechanicId: "ANGELF", allowedViews: ["inicio", "taller"], canAssignOt: false },
+  { username: "fernandos", password: "1234", role: "mecanico", name: "FERNANDOS", mechanicId: "FERNANDOS", allowedViews: ["inicio", "taller"], canAssignOt: false },
+  { username: "diegom", password: "1234", role: "mecanico", name: "DIEGOM", mechanicId: "DIEGOM", allowedViews: ["inicio", "taller"], canAssignOt: false },
+  { username: "jorges", password: "1234", role: "mecanico", name: "JORGES", mechanicId: "JORGES", allowedViews: ["inicio", "taller"], canAssignOt: false },
+  { username: "joselos", password: "1234", role: "mecanico", name: "JOSELOS", mechanicId: "JOSELOS", allowedViews: ["inicio", "taller"], canAssignOt: false },
+  { username: "yong", password: "1234", role: "mecanico", name: "YONG", mechanicId: "YONG", allowedViews: ["inicio", "taller"], canAssignOt: false },
+  { username: "armandoa", password: "1234", role: "mecanico", name: "ARMANDOA", mechanicId: "ARMANDOA", allowedViews: ["inicio", "taller"], canAssignOt: false },
+  { username: "admin", password: "admin", role: "admin", name: "Administrador", allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes", "usuarios"], canAssignOt: true }
+];
+
+function userDocId(username) {
+  return normalizeText(username);
+}
+
+function publicSystemUser(user) {
+  const { password, ...safeUser } = user;
+  return safeUser;
+}
+
+async function ensureSystemUsers(db) {
+  const collection = db.collection(SYSTEM_USERS_COLLECTION);
+  const snapshot = await collection.limit(1).get();
+  if (!snapshot.empty) return;
+
+  const batch = db.batch();
+  DEFAULT_SYSTEM_USERS.forEach((user) => {
+    batch.set(collection.doc(userDocId(user.username)), {
+      ...user,
+      active: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  });
+  await batch.commit();
+}
+
+async function getSystemUser(db, username) {
+  await ensureSystemUsers(db);
+  const doc = await db.collection(SYSTEM_USERS_COLLECTION).doc(userDocId(username)).get();
+  return doc.exists ? { username: doc.id, ...doc.data() } : null;
+}
+
+
 function buildCabecera(cabecera, otId) {
   return {
     ID: otId,
@@ -241,6 +289,96 @@ function buildCabecera(cabecera, otId) {
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   };
 }
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const username = userDocId(req.body?.username);
+    const password = String(req.body?.password || "");
+
+    if (!username || !password) {
+      return res.status(400).json({ ok: false, error: "Usuario y clave son obligatorios" });
+    }
+
+    const { db } = getFirebase();
+    const user = await getSystemUser(db, username);
+
+    if (!user || !user.active || user.password !== password) {
+      return res.status(401).json({ ok: false, error: "Usuario o clave incorrectos" });
+    }
+
+    res.json({ ok: true, user: publicSystemUser(user) });
+  } catch (e) {
+    console.error("POST /api/auth/login fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/system-users", async (req, res) => {
+  try {
+    const { db } = getFirebase();
+    await ensureSystemUsers(db);
+    const snapshot = await db.collection(SYSTEM_USERS_COLLECTION).get();
+    const usuarios = snapshot.docs
+      .map((doc) => publicSystemUser({ username: doc.id, ...doc.data() }))
+      .sort((a, b) => String(a.name || a.username).localeCompare(String(b.name || b.username)));
+
+    res.json({ ok: true, usuarios });
+  } catch (e) {
+    console.error("GET /api/system-users fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.patch("/api/system-users/:username/password", async (req, res) => {
+  try {
+    const username = userDocId(req.params.username);
+    const password = String(req.body?.password || "").trim();
+
+    if (password.length < 3) {
+      return res.status(400).json({ ok: false, error: "La clave debe tener al menos 3 caracteres" });
+    }
+
+    const { db } = getFirebase();
+    const user = await getSystemUser(db, username);
+    if (!user) return res.status(404).json({ ok: false, error: "Usuario no encontrado" });
+
+    await db.collection(SYSTEM_USERS_COLLECTION).doc(username).update({
+      password,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ ok: true, username });
+  } catch (e) {
+    console.error("PATCH /api/system-users/:username/password fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.patch("/api/system-users/:username/active", async (req, res) => {
+  try {
+    const username = userDocId(req.params.username);
+    const active = Boolean(req.body?.active);
+
+    if (username === "admin" && !active) {
+      return res.status(400).json({ ok: false, error: "No se puede desactivar el usuario admin principal" });
+    }
+
+    const { db } = getFirebase();
+    const user = await getSystemUser(db, username);
+    if (!user) return res.status(404).json({ ok: false, error: "Usuario no encontrado" });
+
+    await db.collection(SYSTEM_USERS_COLLECTION).doc(username).update({
+      active,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ ok: true, username, active });
+  } catch (e) {
+    console.error("PATCH /api/system-users/:username/active fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 
 app.post("/api/ot", async (req, res) => {
   try {

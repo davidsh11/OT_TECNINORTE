@@ -1,4 +1,4 @@
-export const users = [
+﻿export const users = [
   {
     username: "recepcion",
     password: "1234",
@@ -89,7 +89,7 @@ export const users = [
     password: "admin",
     role: "admin",
     name: "Administrador",
-    allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes"],
+    allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes", "usuarios"],
     canAssignOt: true
   }
 ];
@@ -110,4 +110,7 @@ export function authenticateUser(username, password) {
     ) || null
   );
 }
+
+
+
 

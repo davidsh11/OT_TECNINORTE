@@ -1,4 +1,4 @@
-const menuItems = [
+﻿const menuItems = [
   ["inicio", "Inicio", "home"],
   ["crear", "Nueva OT", "filePlus"],
   ["taller", "Taller", "wrench"],
@@ -9,7 +9,8 @@ const menuItems = [
   ["buscar", "Buscar OT", "search"],
   ["datosClientes", "Datos clientes", "userEdit"],
   ["historial", "Historial", "history"],
-  ["reportes", "Reportes", "chart"]
+  ["reportes", "Reportes", "chart"],
+  ["usuarios", "Usuarios", "userEdit"]
 ];
 
 function MenuIcon({ name }) {
