@@ -157,6 +157,7 @@ function mechanicTrackingStatus(ot) {
   const closed = Boolean(ot.SalidaAutorizada);
   const charged = Boolean(ot.Cobrado);
   const hasWorkshopProgress = Boolean(
+    readDate(ot.FechaInicioTrabajo) ||
     normalizeText(ot.TrabajoRealizado) ||
       normalizeText(ot.RepuestosUsados) ||
       ["en proceso", "realizando", "proceso", "en taller"].includes(estado)
@@ -183,6 +184,7 @@ function trackingOtPayload(ot) {
     Estado: upperText(ot.Estado || "RECIBIDO"),
     EstadoSeguimiento: status,
     FechaRecepcion: displayDate(ot.FechaRecepcion),
+    FechaInicioTrabajo: displayDate(ot.FechaInicioTrabajo),
     FechaEntrega: displayDate(ot.FechaEntrega),
     FechaCobro: displayDate(ot.FechaCobro),
     FechaSalida: displayDate(ot.FechaSalida),
@@ -228,6 +230,8 @@ function buildCabecera(cabecera, otId) {
     FechaSalida: upperText(cabecera?.FechaSalida),
     Estado: upperText(cabecera?.Estado || "RECIBIDO"),
     FechaRecepcion: cabecera?.FechaRecepcion || new Date().toISOString(),
+    FechaInicioTrabajo: upperText(cabecera?.FechaInicioTrabajo),
+    MecanicoInicioTrabajo: upperText(cabecera?.MecanicoInicioTrabajo),
     FechaEntrega: upperText(cabecera?.FechaEntrega),
     Evidencia1Path: "",
     Evidencia2Path: "",
@@ -1179,6 +1183,54 @@ app.patch("/api/ot/:id/salida", async (req, res) => {
     res.json({ ok: true, otId: id });
   } catch (e) {
     console.error("PATCH /api/ot/:id/salida fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
+  try {
+    const { db } = getFirebase();
+    const id = String(req.params.id);
+    const mecanico = upperText(req.body?.MecanicoResponsable);
+    const otRef = db.collection(OT_COLLECTION).doc(id);
+    const otSnapshot = await otRef.get();
+
+    if (!otSnapshot.exists) {
+      return res.status(404).json({ ok: false, error: "OT no encontrada" });
+    }
+
+    const currentOt = otSnapshot.data() || {};
+    const assignedMechanic = upperText(currentOt.MecanicoResponsable);
+
+    if (!assignedMechanic) {
+      return res.status(400).json({ ok: false, error: "La OT no tiene mecanico asignado" });
+    }
+
+    if (mecanico && mecanico !== assignedMechanic) {
+      return res.status(403).json({ ok: false, error: "La OT esta asignada a otro mecanico" });
+    }
+
+    if (isCompleted(currentOt) || currentOt.Cobrado || currentOt.SalidaAutorizada) {
+      return res.status(409).json({ ok: false, error: "La OT ya no esta disponible para iniciar trabajo" });
+    }
+
+    const startDate = currentOt.FechaInicioTrabajo || new Date().toISOString();
+
+    await otRef.update({
+      Estado: "REALIZANDO",
+      FechaInicioTrabajo: startDate,
+      MecanicoInicioTrabajo: assignedMechanic,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({
+      ok: true,
+      otId: id,
+      FechaInicioTrabajo: startDate,
+      Estado: "REALIZANDO"
+    });
+  } catch (e) {
+    console.error("PATCH /api/ot/:id/inicio-trabajo fallo:", e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

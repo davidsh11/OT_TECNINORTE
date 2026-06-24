@@ -56,8 +56,11 @@ export default function TallerOTView({ api, currentUser }) {
   const canAssign = Boolean(currentUser?.canAssignOt);
   const isAdmin = currentUser?.role === "admin";
   const assignedTo = currentUser?.role === "mecanico" ? currentUser.name : "";
+  const isMechanic = currentUser?.role === "mecanico";
   const hasLaborPrice = Boolean(String(selected?.ValorCobrar || "").trim());
   const canEditWorkshopData = isAdmin || (!canAssign && !hasLaborPrice);
+  const hasStartedWork = Boolean(selected?.FechaInicioTrabajo);
+  const canStartWork = isMechanic && selected?.ID && !hasStartedWork && !hasLaborPrice && !selected?.FechaEntrega;
 
   const updateAssignedMechanic = (mechanicName) => {
     setForm((current) => ({
@@ -112,6 +115,33 @@ export default function TallerOTView({ api, currentUser }) {
       setError("No se pudo cargar la OT seleccionada.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const iniciarTrabajo = async () => {
+    if (!selected?.ID) return;
+
+    try {
+      setSaving(true);
+      setError("");
+      const res = await axios.patch(`${api}/api/ot/${selected.ID}/inicio-trabajo`, {
+        MecanicoResponsable: currentUser?.name
+      });
+      const nextValues = {
+        Estado: res.data?.Estado || "REALIZANDO",
+        FechaInicioTrabajo: res.data?.FechaInicioTrabajo || new Date().toISOString()
+      };
+      setSelected((current) => ({ ...current, ...nextValues }));
+      setResultados((current) =>
+        current.map((ot) => (ot.ID === selected.ID ? { ...ot, ...nextValues } : ot))
+      );
+      setForm((current) => ({ ...current, Estado: nextValues.Estado }));
+      alert("Trabajo iniciado. La OT queda en estado REALIZANDO.");
+    } catch (requestError) {
+      console.error(requestError);
+      setError(requestError.response?.data?.error || "No se pudo iniciar el trabajo.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -251,8 +281,36 @@ export default function TallerOTView({ api, currentUser }) {
               <small>
                 Responsable: {form.MecanicoResponsable || "Sin asignar"}
               </small>
+              <small>
+                Estado: {selected.Estado || form.Estado || "RECIBIDO"}
+              </small>
+              <small>
+                Inicio: {formatDate(selected.FechaInicioTrabajo) || "Sin iniciar"}
+              </small>
             </div>
           </div>
+
+          {isMechanic ? (
+            <section className="panel start-work-panel">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Control de tiempo</p>
+                  <h2>{hasStartedWork ? "Trabajo en realizacion" : "Inicio de trabajo"}</h2>
+                </div>
+              </div>
+              <div className="workshop-actions">
+                <span>
+                  {hasStartedWork
+                    ? `Iniciado: ${formatDate(selected.FechaInicioTrabajo) || "Sin fecha"}`
+                    : "Marque el inicio cuando empiece a trabajar esta OT."}
+                </span>
+                <button className="primary-button" type="button" onClick={iniciarTrabajo} disabled={saving || !canStartWork}>
+                  {hasStartedWork ? "Trabajo iniciado" : saving ? "Guardando..." : "Empezar trabajo"}
+                </button>
+              </div>
+            </section>
+          ) : null}
+
 
           {canAssign ? (
             <section className="panel assignment-panel">
