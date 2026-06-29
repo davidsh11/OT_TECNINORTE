@@ -8,6 +8,12 @@ function formatDate(value) {
   return String(value);
 }
 
+function paymentStatusLabel(ot) {
+  if (ot?.PagoParcialPendiente) return "Pago parcial pendiente";
+  if (ot?.PagoPendienteEmpresa) return "Empresa con pago pendiente";
+  return "Cobrado";
+}
+
 export default function SalidaOTView({ api }) {
   const [search, setSearch] = useState("");
   const [ordenes, setOrdenes] = useState([]);
@@ -112,7 +118,7 @@ export default function SalidaOTView({ api }) {
               <span>
                 <strong>{ot.ID}</strong>
                 <small>{ot.Propietario || "Sin propietario"}</small>
-                <small>{ot.PagoPendienteEmpresa ? "Empresa con pago pendiente" : `Cobrado: ${formatDate(ot.FechaCobro) || "Si"}`}</small>
+                <small>{ot.PagoParcialPendiente || ot.PagoPendienteEmpresa ? paymentStatusLabel(ot) : `Cobrado: ${formatDate(ot.FechaCobro) || "Si"}`}</small>
               </span>
               <span>
                 <strong>{ot.Placa || "Sin placa"}</strong>
@@ -133,7 +139,7 @@ export default function SalidaOTView({ api }) {
                   <h3>{selected.Propietario || "Sin propietario"}</h3>
                 </div>
                 <div className="ot-detail-actions">
-                  <strong>{selected.PagoPendienteEmpresa ? "Empresa pendiente" : "Cobrado"}</strong>
+                  <strong>{paymentStatusLabel(selected)}</strong>
                 </div>
               </div>
 
@@ -151,13 +157,27 @@ export default function SalidaOTView({ api }) {
                 <span>Mecanico</span>
                 <strong>{selected.MecanicoResponsable || "Sin mecanico asignado"}</strong>
                 <span>Estado pago</span>
-                <strong>{selected.PagoPendienteEmpresa ? "EMPRESA PENDIENTE" : "COBRADO"}</strong>
-                <span>{selected.PagoPendienteEmpresa ? "Fecha pendiente" : "Fecha cobro"}</span>
-                <strong>{formatDate(selected.FechaCobro || selected.FechaPagoPendienteEmpresa) || "-"}</strong>
+                <strong>{paymentStatusLabel(selected).toUpperCase()}</strong>
+                {selected.PagoParcialPendiente ? (
+                  <>
+                    <span>Abono / saldo</span>
+                    <strong>{`$${selected.ValorAbonado || "0.00"} / $${selected.SaldoPendiente || "0.00"}`}</strong>
+                  </>
+                ) : null}
+                <span>{selected.PagoParcialPendiente ? "Fecha pago parcial" : selected.PagoPendienteEmpresa ? "Fecha pendiente" : "Fecha cobro"}</span>
+                <strong>{formatDate(selected.FechaCobro || selected.FechaPagoParcial || selected.FechaPagoPendienteEmpresa) || "-"}</strong>
               </div>
 
               <h4>Observaciones</h4>
               <p className="notes-preview">{selected.Observaciones || "Sin observaciones."}</p>
+
+              <h4>Repuestos utilizados</h4>
+              <p className="notes-preview">{selected.RepuestosUsados || "Sin repuestos registrados."}</p>
+
+              <h4>Detalle del trabajo realizado</h4>
+              <p className="notes-preview">
+                {selected.TrabajoRealizado || "Sin detalle de trabajo realizado."}
+              </p>
 
               <div className="workshop-actions">
                 <span>Confirme la salida solo cuando el vehiculo se entregue al cliente.</span>

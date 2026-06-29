@@ -37,6 +37,8 @@ function formatDate(value) {
   return String(value);
 }
 
+const PAGE_SIZE = 6;
+
 export default function ReportesOTView({ api }) {
   const [filters, setFilters] = useState({
     dateFrom: "",
@@ -49,6 +51,7 @@ export default function ReportesOTView({ api }) {
   const [byMechanic, setByMechanic] = useState([]);
   const [monthly, setMonthly] = useState([]);
   const [ordenes, setOrdenes] = useState([]);
+  const [reportPage, setReportPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -71,6 +74,9 @@ export default function ReportesOTView({ api }) {
     [monthly]
   );
 
+  const totalReportPages = Math.max(Math.ceil(ordenes.length / PAGE_SIZE), 1);
+  const visibleOrdenes = ordenes.slice((reportPage - 1) * PAGE_SIZE, reportPage * PAGE_SIZE);
+
   const updateFilter = (key, value) => {
     setFilters((current) => ({ ...current, [key]: value }));
   };
@@ -92,6 +98,7 @@ export default function ReportesOTView({ api }) {
       setByMechanic(res.data.byMechanic || []);
       setMonthly(res.data.monthly || []);
       setOrdenes(res.data.ordenes || []);
+      setReportPage(1);
     } catch (requestError) {
       console.error(requestError);
       setError("No se pudieron cargar los reportes.");
@@ -316,7 +323,7 @@ export default function ReportesOTView({ api }) {
           {ordenes.length === 0 ? (
             <p className="empty-state">No hay OT con los filtros actuales.</p>
           ) : (
-            ordenes.map((ot) => (
+            visibleOrdenes.map((ot) => (
               <article className="report-row" key={ot.ID}>
                 <strong>{ot.ID}</strong>
                 <span>{ot.Propietario || "Sin propietario"} / CL: {ot.CL || "-"}</span>
@@ -331,6 +338,19 @@ export default function ReportesOTView({ api }) {
               </article>
             ))
           )}
+          {ordenes.length > PAGE_SIZE ? (
+            <div className="ot-pagination" aria-label="Paginacion de OT del reporte">
+              <button type="button" onClick={() => setReportPage((current) => Math.max(current - 1, 1))} disabled={reportPage === 1}>
+                Anterior
+              </button>
+              <span>
+                Pagina {reportPage} de {totalReportPages}
+              </span>
+              <button type="button" onClick={() => setReportPage((current) => Math.min(current + 1, totalReportPages))} disabled={reportPage === totalReportPages}>
+                Siguiente
+              </button>
+            </div>
+          ) : null}
         </div>
       </section>
     </section>

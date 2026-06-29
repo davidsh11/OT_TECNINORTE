@@ -76,15 +76,26 @@ function toHistoryItem(ot, detalle = []) {
     FechaEntrega: ot.FechaEntrega || "",
     Propietario: normalizeText(ot.Propietario),
     CL: normalizeText(ot.CL),
+    Telefonos: normalizeText(ot.Telefonos),
+    CorreoElectronico: normalizeText(ot.CorreoElectronico),
+    Direccion: normalizeText(ot.Direccion),
     Placa: normalizeText(ot.Placa),
     Marca: normalizeText(ot.Marca),
     Modelo: normalizeText(ot.Modelo),
     Color: normalizeText(ot.Color),
+    MarcaRadio: normalizeText(ot.MarcaRadio),
+    Anio: normalizeText(ot.Anio),
     Kilometraje: normalizeText(ot.Kilometraje),
-    MecanicoResponsable: normalizeText(ot.MecanicoResponsable),
+    MecanicoResponsable: normalizeText(ot.MecanicoResponsable || ot.MecanicoAsignadoNombre || ot.MecanicoAsignado),
     Estado: normalizeText(ot.Estado),
     EstadoProceso: normalizeText(ot.EstadoProceso) || processStatus(ot),
     Cobrado: Boolean(ot.Cobrado),
+    PagoPendienteEmpresa: Boolean(ot.PagoPendienteEmpresa),
+    PagoParcialPendiente: Boolean(ot.PagoParcialPendiente),
+    ValorCobrar: normalizeText(ot.ValorCobrar),
+    ValorRepuestos: normalizeText(ot.ValorRepuestos),
+    ValorAbonado: normalizeText(ot.ValorAbonado),
+    SaldoPendiente: normalizeText(ot.SaldoPendiente),
     SalidaAutorizada: Boolean(ot.SalidaAutorizada),
     Observaciones: normalizeText(ot.Observaciones),
     TrabajoRealizado: ot.TrabajoRealizado || "",
@@ -190,7 +201,10 @@ export default function HistorialOTView({ api }) {
               Placa: item.Placa,
               Marca: item.Marca,
               Modelo: item.Modelo,
-              Color: item.Color
+              Color: item.Color,
+              MarcaRadio: item.MarcaRadio,
+              Anio: item.Anio,
+              Kilometraje: item.Kilometraje
             }
           ])
       ).values()
@@ -216,22 +230,24 @@ export default function HistorialOTView({ api }) {
       pdfTab.document.write("<p style='font-family: Arial, sans-serif'>Preparando PDF...</p>");
     }
 
-    const detallePdf = [
-      item.TrabajoRealizado
-        ? {
-            Tipo: "TRABAJO",
-            Descripcion: item.TrabajoRealizado,
-            Cantidad: ""
-          }
-        : null,
-      item.RepuestosUsados
-        ? {
-            Tipo: "REPUESTO",
-            Descripcion: item.RepuestosUsados,
-            Cantidad: ""
-          }
-        : null
-    ].filter(Boolean);
+    const detallePdf = item.detalle?.length
+      ? item.detalle
+      : [
+          item.TrabajoRealizado
+            ? {
+                Tipo: "TRABAJO",
+                Descripcion: item.TrabajoRealizado,
+                Cantidad: ""
+              }
+            : null,
+          item.RepuestosUsados
+            ? {
+                Tipo: "REPUESTO",
+                Descripcion: item.RepuestosUsados,
+                Cantidad: ""
+              }
+            : null
+        ].filter(Boolean);
 
     writePdfTab(pdfTab, {
       otId: item.ID,
@@ -239,19 +255,23 @@ export default function HistorialOTView({ api }) {
       cabecera: {
         Propietario: item.Propietario,
         CL: item.CL,
-        Telefonos: "",
-        CorreoElectronico: "",
-        Direccion: "",
+        Telefonos: item.Telefonos,
+        CorreoElectronico: item.CorreoElectronico,
+        Direccion: item.Direccion,
         Marca: item.Marca,
         Modelo: item.Modelo,
         Placa: item.Placa,
         Color: item.Color,
-        MarcaRadio: "",
-        Anio: "",
+        MarcaRadio: item.MarcaRadio,
+        Anio: item.Anio,
         Kilometraje: item.Kilometraje,
         Observaciones: item.Observaciones,
         MecanicoResponsable: item.MecanicoResponsable,
         FechaEntrega: item.FechaEntrega,
+        ValorCobrar: item.ValorCobrar,
+        ValorRepuestos: item.ValorRepuestos,
+        ValorAbonado: item.ValorAbonado,
+        SaldoPendiente: item.SaldoPendiente,
         RepuestosUsados: item.RepuestosUsados,
         TrabajoRealizado: item.TrabajoRealizado
       },

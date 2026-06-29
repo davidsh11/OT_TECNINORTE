@@ -123,7 +123,25 @@ function readDate(value) {
   if (!value) return null;
   if (typeof value === "string") {
     const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+
+    const localMatch = value.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*|\s+)?(?:(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+    if (localMatch) {
+      const [, day, month, year, hour = "0", minute = "0", second = "0"] = localMatch;
+      const localDate = new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hour),
+        Number(minute),
+        Number(second)
+      );
+      return Number.isNaN(localDate.getTime()) ? null : localDate;
+    }
+
+    return null;
   }
   if (value._seconds) return new Date(value._seconds * 1000);
   if (typeof value.toDate === "function") return value.toDate();
@@ -136,7 +154,8 @@ function reportDate(ot) {
 
 function displayDate(value) {
   const date = readDate(value);
-  return date ? date.toISOString() : "";
+  if (date) return date.toISOString();
+  return typeof value === "string" ? value : "";
 }
 
 function matchesDateRange(ot, dateFrom, dateTo) {
@@ -195,6 +214,10 @@ function trackingOtPayload(ot) {
     EsEmpresa: Boolean(ot.EsEmpresa),
     PagoPendienteEmpresa: Boolean(ot.PagoPendienteEmpresa),
     FechaPagoPendienteEmpresa: displayDate(ot.FechaPagoPendienteEmpresa),
+    PagoParcialPendiente: Boolean(ot.PagoParcialPendiente),
+    ValorAbonado: upperText(ot.ValorAbonado),
+    SaldoPendiente: upperText(ot.SaldoPendiente),
+    FechaPagoParcial: displayDate(ot.FechaPagoParcial),
     SalidaAutorizada: Boolean(ot.SalidaAutorizada)
   };
 }
@@ -203,7 +226,7 @@ const MONTH_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "S
 
 const DEFAULT_SYSTEM_USERS = [
   { username: "recepcion", password: "1234", role: "recepcion", name: "Recepcion", allowedViews: ["inicio", "crear", "buscar", "historial", "seguimiento", "salida"] },
-  { username: "cobranza", password: "1234", role: "cobranza", name: "Cobranza", allowedViews: ["inicio", "datosClientes", "historial", "cobranza", "reportes"] },
+  { username: "cobranza", password: "1234", role: "cobranza", name: "Cobranza", allowedViews: ["inicio", "datosClientes", "buscar", "historial", "seguimiento", "cobranza"] },
   { username: "jefe", password: "1234", role: "jefe_taller", name: "Jefe de taller", allowedViews: ["inicio", "historial", "taller", "seguimiento", "cierre", "reportes"], canAssignOt: true },
   { username: "angelf", password: "1234", role: "mecanico", name: "ANGELF", mechanicId: "ANGELF", allowedViews: ["inicio", "taller"], canAssignOt: false },
   { username: "fernandos", password: "1234", role: "mecanico", name: "FERNANDOS", mechanicId: "FERNANDOS", allowedViews: ["inicio", "taller"], canAssignOt: false },
@@ -221,6 +244,13 @@ function userDocId(username) {
 
 function publicSystemUser(user) {
   const { password, ...safeUser } = user;
+  if (safeUser.role === "cobranza") {
+    const views = new Set(safeUser.allowedViews || []);
+    views.delete("reportes");
+    views.add("buscar");
+    views.add("seguimiento");
+    safeUser.allowedViews = Array.from(views);
+  }
   return safeUser;
 }
 
@@ -272,6 +302,10 @@ function buildCabecera(cabecera, otId) {
     EsEmpresa: Boolean(cabecera?.EsEmpresa),
     PagoPendienteEmpresa: Boolean(cabecera?.PagoPendienteEmpresa),
     FechaPagoPendienteEmpresa: upperText(cabecera?.FechaPagoPendienteEmpresa),
+    PagoParcialPendiente: Boolean(cabecera?.PagoParcialPendiente),
+    ValorAbonado: upperText(cabecera?.ValorAbonado),
+    SaldoPendiente: upperText(cabecera?.SaldoPendiente),
+    FechaPagoParcial: upperText(cabecera?.FechaPagoParcial),
     Cobrado: Boolean(cabecera?.Cobrado),
     FechaCobro: upperText(cabecera?.FechaCobro),
     SalidaAutorizada: Boolean(cabecera?.SalidaAutorizada),
@@ -836,7 +870,7 @@ app.get("/api/ot", async (req, res) => {
     }
 
     if (chargeReady) {
-      ordenes = ordenes.filter((ot) => isCompleted(ot) && hasChargeValue(ot) && !ot.Cobrado && !ot.PagoPendienteEmpresa);
+      ordenes = ordenes.filter((ot) => isCompleted(ot) && hasChargeValue(ot) && !ot.Cobrado && !ot.PagoPendienteEmpresa && !ot.PagoParcialPendiente);
     }
 
     if (paid) {
@@ -844,7 +878,7 @@ app.get("/api/ot", async (req, res) => {
     }
 
     if (pendingExit) {
-      ordenes = ordenes.filter((ot) => (Boolean(ot.Cobrado) || Boolean(ot.PagoPendienteEmpresa)) && !ot.SalidaAutorizada);
+      ordenes = ordenes.filter((ot) => (Boolean(ot.Cobrado) || Boolean(ot.PagoPendienteEmpresa) || Boolean(ot.PagoParcialPendiente)) && !ot.SalidaAutorizada);
     }
 
     ordenes = ordenes.map((ot) => ({
@@ -873,8 +907,8 @@ app.get("/api/ot/seguimiento", async (req, res) => {
       ID: doc.id,
       ...doc.data()
     }));
-    const pendientesSalida = ordenes.filter((ot) => (ot.Cobrado || ot.PagoPendienteEmpresa) && !ot.SalidaAutorizada);
-    const activas = ordenes.filter((ot) => !ot.Cobrado && !ot.PagoPendienteEmpresa && !ot.SalidaAutorizada && ot.EstadoSeguimiento !== "finalizada");
+    const pendientesSalida = ordenes.filter((ot) => (ot.Cobrado || ot.PagoPendienteEmpresa || ot.PagoParcialPendiente) && !ot.SalidaAutorizada);
+    const activas = ordenes.filter((ot) => !ot.Cobrado && !ot.PagoPendienteEmpresa && !ot.PagoParcialPendiente && !ot.SalidaAutorizada && ot.EstadoSeguimiento !== "finalizada");
     const mecanicosMap = new Map();
 
     ordenes
@@ -1023,21 +1057,42 @@ app.get("/api/historial", async (req, res) => {
           FechaEntrega: displayDate(ot.FechaEntrega),
           Propietario: upperText(ot.Propietario),
           CL: upperText(ot.CL),
+          Telefonos: upperText(ot.Telefonos),
+          CorreoElectronico: upperText(ot.CorreoElectronico),
+          Direccion: upperText(ot.Direccion),
           Placa: upperText(ot.Placa),
           Marca: upperText(ot.Marca),
           Modelo: upperText(ot.Modelo),
           Color: upperText(ot.Color),
+          MarcaRadio: upperText(ot.MarcaRadio),
+          Anio: upperText(ot.Anio),
           Kilometraje: upperText(ot.Kilometraje),
-          MecanicoResponsable: upperText(ot.MecanicoResponsable),
+          MecanicoResponsable: upperText(ot.MecanicoResponsable || ot.MecanicoAsignadoNombre || ot.MecanicoAsignado),
+          MecanicoAsignado: upperText(ot.MecanicoAsignado),
+          MecanicoAsignadoNombre: upperText(ot.MecanicoAsignadoNombre),
+          MecanicoInicioTrabajo: upperText(ot.MecanicoInicioTrabajo),
           Estado: upperText(ot.Estado),
           EstadoProceso: processStatus(ot),
+          FechaInicioTrabajo: displayDate(ot.FechaInicioTrabajo),
+          FechaCobro: displayDate(ot.FechaCobro),
+          FechaSalida: displayDate(ot.FechaSalida),
+          FechaPagoPendienteEmpresa: displayDate(ot.FechaPagoPendienteEmpresa),
+          ValorCobrar: upperText(ot.ValorCobrar),
+          ValorRepuestos: upperText(ot.ValorRepuestos),
+          EsEmpresa: Boolean(ot.EsEmpresa),
+          PagoPendienteEmpresa: Boolean(ot.PagoPendienteEmpresa),
           Cobrado: Boolean(ot.Cobrado),
           SalidaAutorizada: Boolean(ot.SalidaAutorizada),
           Observaciones: upperText(ot.Observaciones),
           TrabajoRealizado: sentenceText(ot.TrabajoRealizado),
           RepuestosUsados: sentenceText(ot.RepuestosUsados),
+          Evidencia1Path: ot.Evidencia1Path || "",
+          Evidencia2Path: ot.Evidencia2Path || "",
+          FirmaClientePath: ot.FirmaClientePath || "",
+          FirmaRecepcionPath: ot.FirmaRecepcionPath || "",
           trabajos,
-          repuestos
+          repuestos,
+          detalle
         };
       })
     );
@@ -1052,7 +1107,10 @@ app.get("/api/historial", async (req, res) => {
               Placa: item.Placa,
               Marca: item.Marca,
               Modelo: item.Modelo,
-              Color: item.Color
+              Color: item.Color,
+              MarcaRadio: item.MarcaRadio,
+              Anio: item.Anio,
+              Kilometraje: item.Kilometraje
             }
           ])
       ).values()
@@ -1261,8 +1319,15 @@ app.patch("/api/ot/:id/pago", async (req, res) => {
       return res.status(404).json({ ok: false, error: "OT no encontrada" });
     }
 
+    const currentOt = otSnapshot.data() || {};
     const isCompany = Boolean(req.body?.EsEmpresa);
     const pendingCompanyPayment = Boolean(req.body?.PagoPendienteEmpresa);
+    const partialPendingPayment = Boolean(req.body?.PagoParcialPendiente);
+    const valorRepuestos = upperText(req.body?.ValorRepuestos ?? currentOt.ValorRepuestos ?? "");
+    const valorAbonado = upperText(req.body?.ValorAbonado ?? "");
+    const totalAmount = parseMoney(currentOt.ValorCobrar) + parseMoney(valorRepuestos);
+    const paidAmount = parseMoney(valorAbonado);
+    const saldoPendiente = partialPendingPayment ? Math.max(totalAmount - paidAmount, 0) : 0;
 
     if (pendingCompanyPayment && !isCompany) {
       return res.status(400).json({
@@ -1271,15 +1336,29 @@ app.patch("/api/ot/:id/pago", async (req, res) => {
       });
     }
 
+    if (partialPendingPayment && (paidAmount <= 0 || paidAmount >= totalAmount)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Para pago parcial, el abono debe ser mayor a 0 y menor al total de la OT"
+      });
+    }
+
+    const hasPendingPayment = pendingCompanyPayment || partialPendingPayment;
+    const now = new Date().toISOString();
+
     await otRef.update({
-      ValorRepuestos: upperText(req.body?.ValorRepuestos ?? otSnapshot.data()?.ValorRepuestos ?? ""),
+      ValorRepuestos: valorRepuestos,
       EsEmpresa: isCompany,
       PagoPendienteEmpresa: pendingCompanyPayment,
-      FechaPagoPendienteEmpresa: pendingCompanyPayment ? new Date().toISOString() : "",
-      Cobrado: pendingCompanyPayment ? false : true,
-      FechaCobro: pendingCompanyPayment ? "" : new Date().toISOString(),
-      EstadoCobro: pendingCompanyPayment ? "PENDIENTE_EMPRESA" : "COBRADO",
-      Estado: otSnapshot.data()?.SalidaAutorizada ? "FINALIZADO" : otSnapshot.data()?.Estado || "RECIBIDO",
+      FechaPagoPendienteEmpresa: pendingCompanyPayment ? now : "",
+      PagoParcialPendiente: partialPendingPayment,
+      ValorAbonado: partialPendingPayment ? valorAbonado : "",
+      SaldoPendiente: partialPendingPayment ? saldoPendiente.toFixed(2) : "",
+      FechaPagoParcial: partialPendingPayment ? now : "",
+      Cobrado: hasPendingPayment ? false : true,
+      FechaCobro: hasPendingPayment ? "" : now,
+      EstadoCobro: pendingCompanyPayment ? "PENDIENTE_EMPRESA" : partialPendingPayment ? "PENDIENTE_PARCIAL" : "COBRADO",
+      Estado: currentOt.SalidaAutorizada ? "FINALIZADO" : currentOt.Estado || "RECIBIDO",
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -1302,12 +1381,12 @@ app.patch("/api/ot/:id/salida", async (req, res) => {
     }
 
     const currentOt = otSnapshot.data() || {};
-    const canExit = Boolean(currentOt.Cobrado) || Boolean(currentOt.PagoPendienteEmpresa);
+    const canExit = Boolean(currentOt.Cobrado) || Boolean(currentOt.PagoPendienteEmpresa) || Boolean(currentOt.PagoParcialPendiente);
 
     if (!canExit) {
       return res.status(409).json({
         ok: false,
-        error: "La salida solo se puede autorizar si la OT esta cobrada o si es empresa con pago pendiente"
+        error: "La salida solo se puede autorizar si la OT esta cobrada o tiene pago pendiente autorizado"
       });
     }
 

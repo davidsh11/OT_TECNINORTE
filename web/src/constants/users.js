@@ -11,7 +11,7 @@
     password: "1234",
     role: "cobranza",
     name: "Cobranza",
-    allowedViews: ["inicio", "datosClientes", "historial", "cobranza", "reportes"]
+    allowedViews: ["inicio", "datosClientes", "buscar", "historial", "seguimiento", "cobranza"]
   },
   {
     username: "jefe",

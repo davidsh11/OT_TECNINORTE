@@ -14,12 +14,15 @@ function getProcessStatus(ot) {
   return ot.EstadoProceso || (ot.Cobrado && ot.SalidaAutorizada ? "FINALIZADO" : "EN PROCESO");
 }
 
+const PAGE_SIZE = 6;
+
 export default function BuscarOTView({ api }) {
   const [search, setSearch] = useState("");
   const [ordenes, setOrdenes] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detalle, setDetalle] = useState([]);
   const [media, setMedia] = useState(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,6 +34,7 @@ export default function BuscarOTView({ api }) {
         params: { search: term, limit: 50 }
       });
       setOrdenes(res.data.ordenes || []);
+      setPage(1);
     } catch (requestError) {
       console.error(requestError);
       setError("No se pudieron cargar las OT.");
@@ -77,6 +81,9 @@ export default function BuscarOTView({ api }) {
     });
   };
 
+  const totalPages = Math.max(Math.ceil(ordenes.length / PAGE_SIZE), 1);
+  const visibleOrdenes = ordenes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   useEffect(() => {
     cargarOrdenes("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,7 +118,7 @@ export default function BuscarOTView({ api }) {
           {!loading && ordenes.length === 0 ? (
             <p className="empty-state">No hay OT para mostrar.</p>
           ) : null}
-          {ordenes.map((ot) => (
+          {visibleOrdenes.map((ot) => (
             <button
               className={`ot-row ${selected?.ID === ot.ID ? "active" : ""}`}
               type="button"
@@ -135,6 +142,19 @@ export default function BuscarOTView({ api }) {
               </span>
             </button>
           ))}
+          {ordenes.length > PAGE_SIZE ? (
+            <div className="ot-pagination" aria-label="Paginacion de OT">
+              <button type="button" onClick={() => setPage((current) => Math.max(current - 1, 1))} disabled={page === 1}>
+                Anterior
+              </button>
+              <span>
+                Pagina {page} de {totalPages}
+              </span>
+              <button type="button" onClick={() => setPage((current) => Math.min(current + 1, totalPages))} disabled={page === totalPages}>
+                Siguiente
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="ot-detail">

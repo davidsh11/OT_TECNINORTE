@@ -18,6 +18,7 @@ export default function CobranzaOTView({ api }) {
   const [selected, setSelected] = useState(null);
   const [detalle, setDetalle] = useState([]);
   const [valorRepuestos, setValorRepuestos] = useState("");
+  const [valorAbonado, setValorAbonado] = useState("");
   const [esEmpresa, setEsEmpresa] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -51,6 +52,7 @@ export default function CobranzaOTView({ api }) {
       setSelected(res.data.ot);
       setDetalle(res.data.detalle || []);
       setValorRepuestos(res.data.ot?.ValorRepuestos || "");
+      setValorAbonado(res.data.ot?.ValorAbonado || "");
       setEsEmpresa(Boolean(res.data.ot?.EsEmpresa));
     } catch (requestError) {
       console.error(requestError);
@@ -60,11 +62,21 @@ export default function CobranzaOTView({ api }) {
     }
   };
 
-  const registrarPago = async (pagoPendienteEmpresa = false) => {
+  const registrarPago = async (tipoPago = "total") => {
     if (!selected?.ID) return;
 
+    const pagoPendienteEmpresa = tipoPago === "empresa";
+    const pagoParcialPendiente = tipoPago === "parcial";
+    const totalOt = moneyValue(selected.ValorCobrar) + moneyValue(valorRepuestos);
+    const abono = moneyValue(valorAbonado);
+
     if (pagoPendienteEmpresa && !esEmpresa) {
-      alert("Solo puede dejar pago pendiente cuando la OT pertenece a una empresa.");
+      alert("Solo puede dejar pago pendiente de empresa cuando la OT pertenece a una empresa.");
+      return;
+    }
+
+    if (pagoParcialPendiente && (abono <= 0 || abono >= totalOt)) {
+      alert("Para pago parcial, ingrese un abono mayor a 0 y menor al total de la OT.");
       return;
     }
 
@@ -73,23 +85,34 @@ export default function CobranzaOTView({ api }) {
       setError("");
       await axios.patch(`${api}/api/ot/${selected.ID}/pago`, {
         ValorRepuestos: valorRepuestos,
+        ValorAbonado: pagoParcialPendiente ? valorAbonado : "",
         EsEmpresa: esEmpresa,
-        PagoPendienteEmpresa: pagoPendienteEmpresa
+        PagoPendienteEmpresa: pagoPendienteEmpresa,
+        PagoParcialPendiente: pagoParcialPendiente
       });
-      alert(pagoPendienteEmpresa ? "OT marcada como empresa con pago pendiente." : "OT marcada como cobrada.");
+
+      const message = pagoParcialPendiente
+        ? "OT marcada con pago parcial pendiente y habilitada para salida."
+        : pagoPendienteEmpresa
+          ? "OT marcada como empresa con pago pendiente."
+          : "OT marcada como cobrada.";
+      alert(message);
       setSelected(null);
       setDetalle([]);
       setValorRepuestos("");
+      setValorAbonado("");
       setEsEmpresa(false);
       await cargarPendientes();
     } catch (requestError) {
       console.error(requestError);
-      setError(pagoPendienteEmpresa ? "No se pudo dejar el pago pendiente para empresa." : "No se pudo marcar la OT como cobrada.");
+      setError("No se pudo registrar el estado de pago de la OT.");
     } finally {
       setSaving(false);
     }
   };
 
+  const totalSeleccionado = selected ? moneyValue(selected.ValorCobrar) + moneyValue(valorRepuestos) : 0;
+  const saldoParcial = Math.max(totalSeleccionado - moneyValue(valorAbonado), 0);
   useEffect(() => {
     cargarPendientes("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -155,7 +178,7 @@ export default function CobranzaOTView({ api }) {
                   <h3>{selected.Propietario || "Sin propietario"}</h3>
                 </div>
                 <div className="ot-detail-actions">
-                  <strong>${moneyValue(selected.ValorCobrar) + moneyValue(valorRepuestos)}</strong>
+                  <strong>${totalSeleccionado}</strong>
                   <small>Total OT</small>
                 </div>
               </div>
@@ -180,7 +203,7 @@ export default function CobranzaOTView({ api }) {
                 <span>Valor repuestos</span>
                 <strong>${valorRepuestos || "0.00"}</strong>
                 <span>Total a cobrar</span>
-                <strong>${moneyValue(selected.ValorCobrar) + moneyValue(valorRepuestos)}</strong>
+                <strong>${totalSeleccionado}</strong>
               </div>
 
               <h4>Repuestos usados</h4>
@@ -232,6 +255,21 @@ export default function CobranzaOTView({ api }) {
                       value={Number(selected.ValorCobrar || 0).toFixed(2)}
                     />
                   </label>
+                  <label className="field">
+                    <span>Abono recibido</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={valorAbonado}
+                      onChange={(event) => setValorAbonado(event.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Saldo pendiente</span>
+                    <input readOnly value={saldoParcial.toFixed(2)} />
+                  </label>
                 </div>
                 <label className="company-payment-toggle">
                   <input
@@ -246,13 +284,16 @@ export default function CobranzaOTView({ api }) {
 
               <div className="workshop-actions cobranza-actions">
                 <span>
-                  Si no es empresa, debe marcarse como cobrado para autorizar salida. Si es empresa, puede quedar pendiente.
+                  Puede marcar cobro total, dejar pendiente de empresa o registrar un pago parcial. El pago parcial queda pendiente, pero habilita la salida.
                 </span>
                 <div className="payment-action-buttons">
-                  <button className="secondary-button" type="button" onClick={() => registrarPago(true)} disabled={saving || !esEmpresa}>
+                  <button className="secondary-button" type="button" onClick={() => registrarPago("empresa")} disabled={saving || !esEmpresa}>
                     {saving ? "Guardando..." : "Dejar pendiente empresa"}
                   </button>
-                  <button className="primary-button" type="button" onClick={() => registrarPago(false)} disabled={saving}>
+                  <button className="secondary-button" type="button" onClick={() => registrarPago("parcial")} disabled={saving}>
+                    {saving ? "Guardando..." : "Pago parcial y salida"}
+                  </button>
+                  <button className="primary-button" type="button" onClick={() => registrarPago("total")} disabled={saving}>
                     {saving ? "Guardando..." : "Marcar cobrado"}
                   </button>
                 </div>

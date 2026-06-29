@@ -198,30 +198,10 @@ function DashboardIcon({ name }) {
   );
 }
 
-function WorkshopIllustration() {
-  return (
-    <svg className="workshop-illustration" viewBox="0 0 260 180" role="img" aria-label="Servicio automotriz">
-      <path className="workshop-floor" d="M28 143h204" />
-      <path
-        className="workshop-car"
-        d="M39 113h20l19-34c4-7 11-11 19-11h62c8 0 15 4 20 11l20 34h20c7 0 13 6 13 13v14H26v-14c0-7 6-13 13-13Z"
-      />
-      <path className="workshop-window" d="M91 78h36v34H70l14-26c2-5 4-8 7-8Z" />
-      <path className="workshop-window" d="M137 78h25c4 0 8 2 10 6l15 28h-50Z" />
-      <circle className="workshop-wheel" cx="74" cy="141" r="18" />
-      <circle className="workshop-wheel" cx="190" cy="141" r="18" />
-      <circle className="workshop-hub" cx="74" cy="141" r="7" />
-      <circle className="workshop-hub" cx="190" cy="141" r="7" />
-      <path className="workshop-lift" d="M45 48h43M67 48v66M42 114h50" />
-      <path className="workshop-wrench" d="M196 34a19 19 0 0 0-23 23l-49 49 15 15 49-49a19 19 0 0 0 23-23l-14 14-15-15Z" />
-      <path className="workshop-spark" d="M220 28v13M213 34h14M37 72v10M32 77h10" />
-    </svg>
-  );
-}
-
 export default function HomeMenu({
   api,
   userName,
+  userRole,
   allowedViews,
   onOpenCrear,
   onOpenBuscar,
@@ -248,10 +228,12 @@ export default function HomeMenu({
     onOpenReportes,
     onOpenUsuarios
   };
-  const primaryAction = actions.find((action) => allowedViews.includes(action.view));
   const [stats, setStats] = useState(defaultStats);
+  const showStats = userRole === "admin";
 
   useEffect(() => {
+    if (!showStats) return undefined;
+
     let ignore = false;
 
     axios
@@ -273,7 +255,7 @@ export default function HomeMenu({
     return () => {
       ignore = true;
     };
-  }, [api]);
+  }, [api, showStats]);
 
   return (
     <section className="home-menu">
@@ -282,39 +264,24 @@ export default function HomeMenu({
         <p>Selecciona una opcion para comenzar</p>
       </div>
 
-      <div className="stats-row">
-        {stats.map(([label, value, description, icon]) => (
-          <article className="stat-card" key={label}>
-            <span className="dashboard-icon stat">
-              <DashboardIcon name={icon} />
-            </span>
-            <div>
-              <strong>{value}</strong>
-              <span>{label}</span>
-              <small>{description}</small>
-            </div>
-          </article>
-        ))}
-      </div>
+      {showStats ? (
+        <div className="stats-row">
+          {stats.map(([label, value, description, icon]) => (
+            <article className="stat-card" key={label}>
+              <span className="dashboard-icon stat">
+                <DashboardIcon name={icon} />
+              </span>
+              <div>
+                <strong>{value}</strong>
+                <span>{label}</span>
+                <small>{description}</small>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
 
       <div className="dashboard-grid">
-        <div className="home-intro">
-          <div className="home-illustration-wrap">
-            <WorkshopIllustration />
-          </div>
-          <div>
-            <p className="eyebrow">Panel principal</p>
-            <h2>Gestion de ordenes de trabajo</h2>
-          </div>
-          {primaryAction ? (
-            <button className="home-main-button" type="button" onClick={handlers[primaryAction.handler]}>
-              <DashboardIcon name="file" />
-              Ir a gestion de ordenes
-              <span aria-hidden="true">-&gt;</span>
-            </button>
-          ) : null}
-        </div>
-
         <div className="home-actions">
           {actions
             .filter((action) => allowedViews.includes(action.view))

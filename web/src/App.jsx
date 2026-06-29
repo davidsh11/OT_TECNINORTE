@@ -440,6 +440,7 @@ export default function App() {
             <HomeMenu
               api={API}
               userName={currentUser.name}
+              userRole={currentUser.role}
               allowedViews={allowedViews}
               onOpenCrear={() => setActiveView("crear")}
               onOpenBuscar={() => setActiveView("buscar")}
