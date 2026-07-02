@@ -209,6 +209,15 @@ export default function BuscarOTView({ api }) {
                 {selected.TrabajoRealizado || "Sin detalle de trabajo realizado."}
               </p>
 
+                            {selected.RequiereAlineacionBalanceo ? (
+                <>
+                  <h4>Detalle de alineacion y balanceo</h4>
+                  <p className="notes-preview">
+                    {selected.TrabajoAlineacionBalanceo || "Sin detalle de alineacion y balanceo."}
+                  </p>
+                </>
+              ) : null}
+
               <h4>Detalle</h4>
               <div className="consult-detail-list">
                 {detalle.length === 0 ? (

@@ -15,6 +15,12 @@ export const initialCabecera = {
   MecanicoResponsable: "",
   RepuestosUsados: "",
   TrabajoRealizado: "",
+  RequiereAlineacionBalanceo: false,
+  MecanicoAlineacionBalanceo: "",
+  ObservacionAlineacionBalanceo: "",
+  TrabajoAlineacionBalanceo: "",
+  FechaAlineacionBalanceo: "",
+  ValorAlineacionBalanceo: "",
   FechaEntrega: ""
 };
 

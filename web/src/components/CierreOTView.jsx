@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 function formatDate(value) {
@@ -6,6 +6,12 @@ function formatDate(value) {
   if (typeof value === "string") return new Date(value).toLocaleString();
   if (value._seconds) return new Date(value._seconds * 1000).toLocaleString();
   return String(value);
+}
+
+function hasLaborPrice(ot) {
+  const hasMechanicalPrice = String(ot?.ValorCobrar || "").trim() !== "";
+  const hasAlignmentPrice = !ot?.RequiereAlineacionBalanceo || String(ot?.ValorAlineacionBalanceo || "").trim() !== "";
+  return hasMechanicalPrice && hasAlignmentPrice;
 }
 
 function CobroBadge({ cobrado }) {
@@ -16,15 +22,25 @@ function CobroBadge({ cobrado }) {
   );
 }
 
+function LaborPriceBadge({ hasPrice }) {
+  return (
+    <span className={`payment-status-badge ${hasPrice ? "paid" : "pending"}`}>
+      {hasPrice ? "Precio colocado" : "Falta precio mano de obra"}
+    </span>
+  );
+}
+
 export default function CierreOTView({ api }) {
   const [search, setSearch] = useState("");
   const [ordenes, setOrdenes] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detalle, setDetalle] = useState([]);
   const [valorCobrar, setValorCobrar] = useState("");
+  const [valorAlineacionBalanceo, setValorAlineacionBalanceo] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   const cargarFinalizadas = async (term = search) => {
     try {
@@ -38,6 +54,7 @@ export default function CierreOTView({ api }) {
         }
       });
       setOrdenes(res.data.ordenes || []);
+      setPage(1);
     } catch (requestError) {
       console.error(requestError);
       setError("No se pudieron cargar las OT finalizadas.");
@@ -54,6 +71,7 @@ export default function CierreOTView({ api }) {
       setSelected(res.data.ot);
       setDetalle(res.data.detalle || []);
       setValorCobrar(res.data.ot?.ValorCobrar || "");
+      setValorAlineacionBalanceo(res.data.ot?.ValorAlineacionBalanceo || "");
     } catch (requestError) {
       console.error(requestError);
       setError("No se pudo cargar el cierre de la OT.");
@@ -73,11 +91,15 @@ export default function CierreOTView({ api }) {
     try {
       setSaving(true);
       setError("");
-      await axios.patch(`${api}/api/ot/${selected.ID}/cobro`, { ValorCobrar: valorCobrar });
+      await axios.patch(`${api}/api/ot/${selected.ID}/cobro`, {
+        ValorCobrar: valorCobrar,
+        ValorAlineacionBalanceo: valorAlineacionBalanceo
+      });
       alert("Valor de mano de obra guardado.");
       setSelected(null);
       setDetalle([]);
       setValorCobrar("");
+      setValorAlineacionBalanceo("");
       await cargarFinalizadas();
     } catch (requestError) {
       console.error(requestError);
@@ -87,6 +109,15 @@ export default function CierreOTView({ api }) {
     }
   };
 
+  const pageSize = 5;
+  const orderedOrdenes = useMemo(() => {
+    return [...ordenes].sort((a, b) => Number(hasLaborPrice(a)) - Number(hasLaborPrice(b)));
+  }, [ordenes]);
+  const totalPages = Math.max(1, Math.ceil(orderedOrdenes.length / pageSize));
+  const visibleOrdenes = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return orderedOrdenes.slice(start, start + pageSize);
+  }, [orderedOrdenes, page]);
   useEffect(() => {
     cargarFinalizadas("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -121,7 +152,7 @@ export default function CierreOTView({ api }) {
           {!loading && ordenes.length === 0 ? (
             <p className="empty-state">No hay OT finalizadas para mostrar.</p>
           ) : null}
-          {ordenes.map((ot) => (
+          {visibleOrdenes.map((ot) => (
             <button
               className={`ot-row ${selected?.ID === ot.ID ? "active" : ""}`}
               type="button"
@@ -135,11 +166,23 @@ export default function CierreOTView({ api }) {
               </span>
               <span>
                 <strong>{ot.Placa || "Sin placa"}</strong>
+                <LaborPriceBadge hasPrice={hasLaborPrice(ot)} />
                 <CobroBadge cobrado={Boolean(ot.Cobrado)} />
                 <small>{formatDate(ot.FechaEntrega) || formatDate(ot.FechaRecepcion)}</small>
               </span>
             </button>
           ))}
+          {ordenes.length > pageSize ? (
+            <div className="ot-pagination">
+              <button type="button" onClick={() => setPage((current) => Math.max(current - 1, 1))} disabled={page === 1}>
+                Anterior
+              </button>
+              <span>Pagina {page} de {totalPages} / {ordenes.length} OT</span>
+              <button type="button" onClick={() => setPage((current) => Math.min(current + 1, totalPages))} disabled={page === totalPages}>
+                Siguiente
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="ot-detail">
@@ -153,6 +196,7 @@ export default function CierreOTView({ api }) {
                   <h3>{selected.Propietario || "Sin propietario"}</h3>
                 </div>
                 <div className="ot-detail-actions">
+                  <LaborPriceBadge hasPrice={hasLaborPrice(selected)} />
                   <CobroBadge cobrado={Boolean(selected.Cobrado)} />
                   {selected.Cobrado ? <small>No editable</small> : null}
                 </div>
@@ -188,6 +232,15 @@ export default function CierreOTView({ api }) {
                 {selected.TrabajoRealizado || "Sin detalle de trabajo realizado."}
               </p>
 
+                            {selected.RequiereAlineacionBalanceo ? (
+                <>
+                  <h4>Detalle de alineacion y balanceo</h4>
+                  <p className="notes-preview">
+                    {selected.TrabajoAlineacionBalanceo || "Sin detalle de alineacion y balanceo."}
+                  </p>
+                </>
+              ) : null}
+
               <h4>Detalle inicial registrado</h4>
               <div className="consult-detail-list">
                 {detalle.length === 0 ? (
@@ -210,23 +263,42 @@ export default function CierreOTView({ api }) {
                     <h2>Valor mano de obra</h2>
                   </div>
                 </div>
-                <div className="search-tools">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    readOnly={Boolean(selected.Cobrado)}
-                    value={valorCobrar}
-                    onChange={(event) => setValorCobrar(event.target.value)}
-                  />
+                <div className="form-grid">
+                  <label className="field">
+                    <span>Mano de obra mecanica</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      readOnly={Boolean(selected.Cobrado)}
+                      value={valorCobrar}
+                      onChange={(event) => setValorCobrar(event.target.value)}
+                    />
+                  </label>
+                  {selected.RequiereAlineacionBalanceo ? (
+                    <label className="field">
+                      <span>Alineacion y balanceo</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        readOnly={Boolean(selected.Cobrado)}
+                        value={valorAlineacionBalanceo}
+                        onChange={(event) => setValorAlineacionBalanceo(event.target.value)}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+                <div className="workshop-actions cobranza-actions">
                   {selected.Cobrado ? (
                     <button className="paid-lock-button" type="button" disabled>
                       Cobrado
                     </button>
                   ) : (
                     <button className="primary-button" type="button" onClick={guardarCobro} disabled={saving}>
-                      {saving ? "Guardando..." : "Guardar mano de obra"}
+                      {saving ? "Guardando..." : "Guardar valores"}
                     </button>
                   )}
                 </div>

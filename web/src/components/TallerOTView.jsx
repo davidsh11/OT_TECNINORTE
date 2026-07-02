@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useMemo, useState } from "react";
 import axios from "axios";
 import { mechanics } from "../constants/users";
 import TrabajoRealizadoForm from "./TrabajoRealizadoForm";
@@ -7,6 +7,8 @@ const emptyTaller = {
   MecanicoResponsable: "",
   RepuestosUsados: "",
   TrabajoRealizado: "",
+  TrabajoAlineacionBalanceo: "",
+  FechaAlineacionBalanceo: "",
   FechaEntrega: "",
   Estado: "Recibido"
 };
@@ -24,6 +26,8 @@ function toTallerForm(ot) {
     MecanicoResponsable: ot?.MecanicoResponsable || "",
     RepuestosUsados: sentenceText(ot?.RepuestosUsados),
     TrabajoRealizado: sentenceText(ot?.TrabajoRealizado),
+    TrabajoAlineacionBalanceo: sentenceText(ot?.TrabajoAlineacionBalanceo),
+    FechaAlineacionBalanceo: ot?.FechaAlineacionBalanceo || "",
     FechaEntrega: ot?.FechaEntrega || "",
     Estado: ot?.Estado || "Recibido"
   };
@@ -36,6 +40,40 @@ function formatDate(value) {
   return String(value);
 }
 
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isFinalized(ot) {
+  const estado = normalizeText(ot?.Estado);
+  return Boolean(ot?.FechaEntrega) || ["entregado", "completado", "finalizado", "finalizada"].includes(estado);
+}
+
+function workshopStatus(ot, isAlignmentTask = false) {
+  if (isAlignmentTask) {
+    if (ot?.FechaAlineacionBalanceo && normalizeText(ot?.TrabajoAlineacionBalanceo)) return "finalizada";
+    if (ot?.FechaInicioAlineacionBalanceo || normalizeText(ot?.EstadoAlineacionBalanceo) === "realizando") return "realizando";
+    return "pendiente";
+  }
+
+  if (isFinalized(ot)) return "finalizada";
+  if (ot?.FechaInicioTrabajo || normalizeText(ot?.Estado) === "realizando") return "realizando";
+  return "pendiente";
+}
+
+function statusRank(ot, isAlignmentTask = false) {
+  return { pendiente: 0, realizando: 1, finalizada: 2 }[workshopStatus(ot, isAlignmentTask)] ?? 3;
+}
+
+function WorkshopStatusBadge({ status }) {
+  const labels = {
+    pendiente: "Pendiente por realizar",
+    realizando: "Realizando",
+    finalizada: "Finalizada"
+  };
+
+  return <span className={`ot-status-pill status-${status}`}>{labels[status] || status}</span>;
+}
 export default function TallerOTView({ api, currentUser }) {
   const [search, setSearch] = useState("");
   const [resultados, setResultados] = useState([]);
@@ -45,9 +83,10 @@ export default function TallerOTView({ api, currentUser }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   const updateForm = (key, value) => {
-    const nextValue = ["RepuestosUsados", "TrabajoRealizado"].includes(key)
+    const nextValue = ["RepuestosUsados", "TrabajoRealizado", "TrabajoAlineacionBalanceo"].includes(key)
       ? sentenceText(value)
       : value;
     setForm((current) => ({ ...current, [key]: nextValue }));
@@ -58,10 +97,26 @@ export default function TallerOTView({ api, currentUser }) {
   const assignedTo = currentUser?.role === "mecanico" ? currentUser.name : "";
   const isMechanic = currentUser?.role === "mecanico";
   const hasLaborPrice = Boolean(String(selected?.ValorCobrar || "").trim());
+  const isFernandos = currentUser?.name === "FERNANDOS";
+  const isAlignmentTaskForCurrent = (ot) => Boolean(
+    isMechanic &&
+      isFernandos &&
+      ot?.RequiereAlineacionBalanceo &&
+      ot?.MecanicoResponsable !== currentUser?.name
+  );
+  const isSelectedAlignmentTask = selected ? isAlignmentTaskForCurrent(selected) : false;
   const canEditWorkshopData = isAdmin || (!canAssign && !hasLaborPrice);
-  const hasStartedWork = Boolean(selected?.FechaInicioTrabajo);
-  const canStartWork = isMechanic && selected?.ID && !hasStartedWork && !hasLaborPrice && !selected?.FechaEntrega;
-
+  const hasStartedWork = isSelectedAlignmentTask ? Boolean(selected?.FechaInicioAlineacionBalanceo) : Boolean(selected?.FechaInicioTrabajo);
+  const canStartWork = isMechanic && selected?.ID && !hasStartedWork && !hasLaborPrice && (isSelectedAlignmentTask ? !selected?.FechaAlineacionBalanceo : !selected?.FechaEntrega);
+  const pageSize = 5;
+  const orderedResultados = useMemo(() => {
+    return [...resultados].sort((a, b) => statusRank(a, isAlignmentTaskForCurrent(a)) - statusRank(b, isAlignmentTaskForCurrent(b)));
+  }, [resultados, currentUser?.name, isMechanic, isFernandos]);
+  const totalPages = Math.max(1, Math.ceil(orderedResultados.length / pageSize));
+  const visibleResultados = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return orderedResultados.slice(start, start + pageSize);
+  }, [orderedResultados, page]);
   const updateAssignedMechanic = (mechanicName) => {
     setForm((current) => ({
       ...current,
@@ -80,10 +135,11 @@ export default function TallerOTView({ api, currentUser }) {
           search: search.trim() || undefined,
           assignedTo: assignedTo || undefined,
           unassigned: canAssign && !search.trim() ? true : undefined,
-          limit: 50
+          limit: 100
         }
       });
       setResultados(res.data.ordenes || []);
+      setPage(1);
       setSelected(null);
       setDetalle([]);
       setForm(emptyTaller);
@@ -125,17 +181,23 @@ export default function TallerOTView({ api, currentUser }) {
       setSaving(true);
       setError("");
       const res = await axios.patch(`${api}/api/ot/${selected.ID}/inicio-trabajo`, {
-        MecanicoResponsable: currentUser?.name
+        MecanicoResponsable: currentUser?.name,
+        AreaTrabajo: isSelectedAlignmentTask ? "alineacion_balanceo" : "mecanica"
       });
-      const nextValues = {
-        Estado: res.data?.Estado || "REALIZANDO",
-        FechaInicioTrabajo: res.data?.FechaInicioTrabajo || new Date().toISOString()
-      };
+      const nextValues = isSelectedAlignmentTask
+        ? {
+            EstadoAlineacionBalanceo: res.data?.EstadoAlineacionBalanceo || "REALIZANDO",
+            FechaInicioAlineacionBalanceo: res.data?.FechaInicioAlineacionBalanceo || new Date().toISOString()
+          }
+        : {
+            Estado: res.data?.Estado || "REALIZANDO",
+            FechaInicioTrabajo: res.data?.FechaInicioTrabajo || new Date().toISOString()
+          };
       setSelected((current) => ({ ...current, ...nextValues }));
       setResultados((current) =>
         current.map((ot) => (ot.ID === selected.ID ? { ...ot, ...nextValues } : ot))
       );
-      setForm((current) => ({ ...current, Estado: nextValues.Estado }));
+      setForm((current) => ({ ...current, Estado: nextValues.Estado || current.Estado }));
       alert("Trabajo iniciado. La OT queda en estado REALIZANDO.");
     } catch (requestError) {
       console.error(requestError);
@@ -158,7 +220,12 @@ export default function TallerOTView({ api, currentUser }) {
       return;
     }
 
-    if (!canAssign || isAdmin) {
+    if (isSelectedAlignmentTask) {
+      if (!form.TrabajoAlineacionBalanceo.trim()) {
+        alert("Ingrese el detalle realizado en alineacion y balanceo.");
+        return;
+      }
+    } else if (!canAssign || isAdmin) {
       if (!form.MecanicoResponsable.trim()) {
         alert("La OT debe tener un mecanico responsable.");
         return;
@@ -181,12 +248,20 @@ export default function TallerOTView({ api, currentUser }) {
       const formattedForm = {
         ...form,
         RepuestosUsados: sentenceText(form.RepuestosUsados),
-        TrabajoRealizado: sentenceText(form.TrabajoRealizado)
+        TrabajoRealizado: sentenceText(form.TrabajoRealizado),
+        TrabajoAlineacionBalanceo: sentenceText(form.TrabajoAlineacionBalanceo),
+        FechaAlineacionBalanceo: form.FechaAlineacionBalanceo || new Date().toISOString()
       };
-      const payload = canAssign && !isAdmin ? formattedForm : { ...formattedForm, Estado: "Finalizado" };
-      const res = await axios.patch(`${api}/api/ot/${selected.ID}/taller`, {
+      const payload = isSelectedAlignmentTask
+        ? {
+            TrabajoAlineacionBalanceo: formattedForm.TrabajoAlineacionBalanceo,
+            FechaAlineacionBalanceo: formattedForm.FechaAlineacionBalanceo
+          }
+        : canAssign && !isAdmin ? formattedForm : { ...formattedForm, Estado: "Finalizado" };
+      await axios.patch(`${api}/api/ot/${selected.ID}/taller`, {
         cabecera: payload,
-        userRole: currentUser?.role
+        userRole: currentUser?.role,
+        areaTrabajo: isSelectedAlignmentTask ? "alineacion_balanceo" : "mecanica"
       });
 
       if (canAssign && !isAdmin) {
@@ -197,10 +272,10 @@ export default function TallerOTView({ api, currentUser }) {
         setResultados((current) => current.filter((ot) => ot.ID !== selected.ID));
       } else if (!canAssign) {
         alert("Datos de taller guardados.");
-        setSelected(null);
-        setDetalle([]);
-        setForm(emptyTaller);
-        setResultados((current) => current.filter((ot) => ot.ID !== selected.ID));
+        const updatedOt = { ...selected, ...payload };
+        setSelected(updatedOt);
+        setForm((current) => ({ ...current, ...payload }));
+        setResultados((current) => current.map((ot) => (ot.ID === selected.ID ? { ...ot, ...payload } : ot)));
       } else {
         setSelected((current) => ({ ...current, ...payload }));
         setForm(payload);
@@ -239,26 +314,42 @@ export default function TallerOTView({ api, currentUser }) {
 
       {resultados.length > 0 ? (
         <div className="workshop-results">
-          {resultados.map((ot, index) => (
-            <button
-              className={`ot-row ${selected?.ID === ot.ID ? "active" : ""}`}
-              type="button"
-              key={ot.ID}
-              onClick={() => cargarOT(ot.ID)}
-            >
-              <span>
-                <strong>{index === 0 ? `${ot.ID} - Ultima` : ot.ID}</strong>
-                <small>{ot.Propietario || "Sin propietario"} / CL: {ot.CL || "-"}</small>
-                <small>
-                  Responsable: {ot.MecanicoResponsable || "Sin asignar"}
-                </small>
-              </span>
-              <span>
-                <strong>{ot.Placa || "Sin placa"}</strong>
-                <small>{formatDate(ot.FechaRecepcion) || "Sin fecha"}</small>
-              </span>
-            </button>
-          ))}
+          {visibleResultados.map((ot) => {
+            const status = workshopStatus(ot, isAlignmentTaskForCurrent(ot));
+
+            return (
+              <button
+                className={`ot-row ${selected?.ID === ot.ID ? "active" : ""}`}
+                type="button"
+                key={ot.ID}
+                onClick={() => cargarOT(ot.ID)}
+              >
+                <span>
+                  <strong>{ot.ID}</strong>
+                  <small>{ot.Propietario || "Sin propietario"} / CL: {ot.CL || "-"}</small>
+                  <small>
+                    Responsable: {ot.MecanicoResponsable || "Sin asignar"}
+                  </small>
+                </span>
+                <span>
+                  <strong>{ot.Placa || "Sin placa"}</strong>
+                  <WorkshopStatusBadge status={status} />
+                  <small>{formatDate(ot.FechaRecepcion) || "Sin fecha"}</small>
+                </span>
+              </button>
+            );
+          })}
+          {resultados.length > pageSize ? (
+            <div className="ot-pagination">
+              <button type="button" onClick={() => setPage((current) => Math.max(current - 1, 1))} disabled={page === 1}>
+                Anterior
+              </button>
+              <span>Pagina {page} de {totalPages} / {resultados.length} OT</span>
+              <button type="button" onClick={() => setPage((current) => Math.min(current + 1, totalPages))} disabled={page === totalPages}>
+                Siguiente
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -281,6 +372,7 @@ export default function TallerOTView({ api, currentUser }) {
               <small>
                 Responsable: {form.MecanicoResponsable || "Sin asignar"}
               </small>
+              <WorkshopStatusBadge status={workshopStatus(selected, isSelectedAlignmentTask)} />
               <small>
                 Estado: {selected.Estado || form.Estado || "RECIBIDO"}
               </small>
@@ -331,7 +423,7 @@ export default function TallerOTView({ api, currentUser }) {
               <div className="workshop-actions">
                 <span>
                   {hasStartedWork
-                    ? `Iniciado: ${formatDate(selected.FechaInicioTrabajo) || "Sin fecha"}`
+                    ? `Iniciado: ${formatDate(isSelectedAlignmentTask ? selected.FechaInicioAlineacionBalanceo : selected.FechaInicioTrabajo) || "Sin fecha"}`
                     : "Marque el inicio cuando empiece a trabajar esta OT."}
                 </span>
                 <button className="primary-button" type="button" onClick={iniciarTrabajo} disabled={saving || !canStartWork}>
@@ -385,7 +477,42 @@ export default function TallerOTView({ api, currentUser }) {
             </p>
           ) : null}
 
-          {canEditWorkshopData ? (
+          {isSelectedAlignmentTask && canEditWorkshopData ? (
+            <section className="panel">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Alineacion y balanceo</p>
+                  <h2>Trabajo realizado por FERNANDOS</h2>
+                </div>
+              </div>
+              <p className="notes-preview">{selected.ObservacionAlineacionBalanceo || "Sin observacion registrada para esta area."}</p>
+              <div className="form-grid">
+                <label className="field">
+                  <span>Mecanico responsable</span>
+                  <input readOnly value="FERNANDOS" />
+                </label>
+                <label className="field">
+                  <span>Fecha y hora de finalizacion</span>
+                  <input
+                    type="datetime-local"
+                    value={form.FechaAlineacionBalanceo}
+                    onChange={(event) => updateForm("FechaAlineacionBalanceo", event.target.value)}
+                  />
+                </label>
+              </div>
+              <label className="field">
+                <span>Detalle realizado en alineacion y balanceo</span>
+                <textarea
+                  rows="5"
+                  required
+                  value={form.TrabajoAlineacionBalanceo}
+                  onChange={(event) => updateForm("TrabajoAlineacionBalanceo", event.target.value)}
+                />
+              </label>
+            </section>
+          ) : null}
+
+          {!isSelectedAlignmentTask && canEditWorkshopData ? (
             <TrabajoRealizadoForm cabecera={form} onChange={updateForm} lockMechanic />
           ) : null}
 

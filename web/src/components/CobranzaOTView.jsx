@@ -12,12 +12,39 @@ function moneyValue(value) {
   return Number(value || 0);
 }
 
+function firstMoneyValue(...values) {
+  const value = values.find((item) => item !== undefined && item !== null && item !== "");
+  return value === undefined ? null : moneyValue(value);
+}
+
+function formatMoney(value) {
+  return moneyValue(value).toFixed(2);
+}
+
+function totalOtValue(ot, valorRepuestosOverride) {
+  const apiTotal = valorRepuestosOverride === undefined ? firstMoneyValue(ot?.ValorTotal) : null;
+  if (apiTotal !== null) return apiTotal;
+
+  return moneyValue(ot?.ValorCobrar) + moneyValue(valorRepuestosOverride ?? ot?.ValorRepuestos) + moneyValue(ot?.ValorAlineacionBalanceo);
+}
+
+function pendingOtValue(ot, totalOverride) {
+  const total = totalOverride ?? totalOtValue(ot);
+  const apiPending = firstMoneyValue(ot?.ValorPendienteCobro, ot?.SaldoPendiente);
+
+  if (apiPending !== null && (ot?.PagoParcialPendiente || ot?.PagoPendienteEmpresa)) return apiPending;
+  if (ot?.PagoParcialPendiente) return Math.max(total - moneyValue(ot?.ValorAbonado), 0);
+  if (ot?.PagoPendienteEmpresa) return total;
+
+  return ot?.Cobrado ? 0 : total;
+}
 export default function CobranzaOTView({ api }) {
   const [search, setSearch] = useState("");
   const [ordenes, setOrdenes] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detalle, setDetalle] = useState([]);
   const [valorRepuestos, setValorRepuestos] = useState("");
+  const [valorAlineacionBalanceo, setValorAlineacionBalanceo] = useState("");
   const [valorAbonado, setValorAbonado] = useState("");
   const [esEmpresa, setEsEmpresa] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -52,6 +79,7 @@ export default function CobranzaOTView({ api }) {
       setSelected(res.data.ot);
       setDetalle(res.data.detalle || []);
       setValorRepuestos(res.data.ot?.ValorRepuestos || "");
+      setValorAlineacionBalanceo(res.data.ot?.ValorAlineacionBalanceo || "");
       setValorAbonado(res.data.ot?.ValorAbonado || "");
       setEsEmpresa(Boolean(res.data.ot?.EsEmpresa));
     } catch (requestError) {
@@ -67,7 +95,7 @@ export default function CobranzaOTView({ api }) {
 
     const pagoPendienteEmpresa = tipoPago === "empresa";
     const pagoParcialPendiente = tipoPago === "parcial";
-    const totalOt = moneyValue(selected.ValorCobrar) + moneyValue(valorRepuestos);
+    const totalOt = moneyValue(selected.ValorCobrar) + moneyValue(valorRepuestos) + moneyValue(valorAlineacionBalanceo);
     const abono = moneyValue(valorAbonado);
 
     if (pagoPendienteEmpresa && !esEmpresa) {
@@ -100,6 +128,7 @@ export default function CobranzaOTView({ api }) {
       setSelected(null);
       setDetalle([]);
       setValorRepuestos("");
+      setValorAlineacionBalanceo("");
       setValorAbonado("");
       setEsEmpresa(false);
       await cargarPendientes();
@@ -111,8 +140,14 @@ export default function CobranzaOTView({ api }) {
     }
   };
 
-  const totalSeleccionado = selected ? moneyValue(selected.ValorCobrar) + moneyValue(valorRepuestos) : 0;
+  const selectedWithLiveValues = selected
+    ? { ...selected, ValorRepuestos: valorRepuestos, ValorAlineacionBalanceo: valorAlineacionBalanceo }
+    : null;
+  const totalSeleccionado = selectedWithLiveValues ? totalOtValue(selectedWithLiveValues, valorRepuestos) : 0;
   const saldoParcial = Math.max(totalSeleccionado - moneyValue(valorAbonado), 0);
+  const saldoPendienteSeleccionado = selected?.PagoParcialPendiente || selected?.PagoPendienteEmpresa
+    ? pendingOtValue({ ...selectedWithLiveValues, ValorAbonado: valorAbonado }, totalSeleccionado)
+    : saldoParcial;
   useEffect(() => {
     cargarPendientes("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,24 +182,30 @@ export default function CobranzaOTView({ api }) {
           {!loading && ordenes.length === 0 ? (
             <p className="empty-state">No hay OT pendientes de cobro.</p>
           ) : null}
-          {ordenes.map((ot) => (
-            <button
-              className={`ot-row ${selected?.ID === ot.ID ? "active" : ""}`}
-              type="button"
-              key={ot.ID}
-              onClick={() => cargarDetalle(ot.ID)}
-            >
-              <span>
-                <strong>{ot.ID}</strong>
-                <small>{ot.Propietario || "Sin propietario"}</small>
-                <small>CL: {ot.CL || "-"}</small>
-              </span>
-              <span>
-                <strong>${moneyValue(ot.ValorCobrar) + moneyValue(ot.ValorRepuestos)}</strong>
-                <small>{ot.Placa || "Sin placa"}</small>
-              </span>
-            </button>
-          ))}
+          {ordenes.map((ot) => {
+            const totalOt = totalOtValue(ot);
+            const saldoPendiente = pendingOtValue(ot, totalOt);
+
+            return (
+              <button
+                className={`ot-row ${selected?.ID === ot.ID ? "active" : ""}`}
+                type="button"
+                key={ot.ID}
+                onClick={() => cargarDetalle(ot.ID)}
+              >
+                <span>
+                  <strong>{ot.ID}</strong>
+                  <small>{ot.Propietario || "Sin propietario"}</small>
+                  <small>CL: {ot.CL || "-"}</small>
+                </span>
+                <span>
+                  <strong>Total: ${formatMoney(totalOt)}</strong>
+                  <small>Saldo pendiente: ${formatMoney(saldoPendiente)}</small>
+                  <small>{ot.Placa || "Sin placa"}</small>
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="ot-detail">
@@ -178,7 +219,7 @@ export default function CobranzaOTView({ api }) {
                   <h3>{selected.Propietario || "Sin propietario"}</h3>
                 </div>
                 <div className="ot-detail-actions">
-                  <strong>${totalSeleccionado}</strong>
+                  <strong>${formatMoney(totalSeleccionado)}</strong>
                   <small>Total OT</small>
                 </div>
               </div>
@@ -200,10 +241,18 @@ export default function CobranzaOTView({ api }) {
                 <strong>{selected.MecanicoResponsable || "-"}</strong>
                 <span>Mano de obra</span>
                 <strong>${selected.ValorCobrar || "0.00"}</strong>
+                {selected.RequiereAlineacionBalanceo ? (
+                  <>
+                    <span>Alineacion y balanceo</span>
+                    <strong>${selected.ValorAlineacionBalanceo || "0.00"}</strong>
+                  </>
+                ) : null}
                 <span>Valor repuestos</span>
                 <strong>${valorRepuestos || "0.00"}</strong>
                 <span>Total a cobrar</span>
-                <strong>${totalSeleccionado}</strong>
+                <strong>${formatMoney(totalSeleccionado)}</strong>
+                <span>Saldo pendiente cobro</span>
+                <strong>${formatMoney(saldoPendienteSeleccionado)}</strong>
               </div>
 
               <h4>Repuestos usados</h4>
@@ -213,6 +262,15 @@ export default function CobranzaOTView({ api }) {
               <p className="notes-preview">
                 {selected.TrabajoRealizado || "Sin detalle de trabajo realizado."}
               </p>
+
+                            {selected.RequiereAlineacionBalanceo ? (
+                <>
+                  <h4>Detalle de alineacion y balanceo</h4>
+                  <p className="notes-preview">
+                    {selected.TrabajoAlineacionBalanceo || "Sin detalle de alineacion y balanceo."}
+                  </p>
+                </>
+              ) : null}
 
               <h4>Detalle inicial registrado</h4>
               <div className="consult-detail-list">
@@ -255,6 +313,15 @@ export default function CobranzaOTView({ api }) {
                       value={Number(selected.ValorCobrar || 0).toFixed(2)}
                     />
                   </label>
+                  {selected.RequiereAlineacionBalanceo ? (
+                    <label className="field">
+                      <span>Alineacion y balanceo</span>
+                      <input
+                        readOnly
+                        value={Number(valorAlineacionBalanceo || 0).toFixed(2)}
+                      />
+                    </label>
+                  ) : null}
                   <label className="field">
                     <span>Abono recibido</span>
                     <input

@@ -56,6 +56,33 @@ export default function CrearOTView({
 
       <ObservacionesForm value={cabecera.Observaciones} onChange={onCabeceraChange} />
 
+      <section className="panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Servicios adicionales</p>
+            <h2>Alineacion y balanceo</h2>
+          </div>
+        </div>
+        <label className="company-payment-toggle">
+          <input
+            type="checkbox"
+            checked={Boolean(cabecera.RequiereAlineacionBalanceo)}
+            onChange={(event) => onCabeceraChange("RequiereAlineacionBalanceo", event.target.checked)}
+          />
+          <span>Esta OT requiere alineacion y balanceo</span>
+        </label>
+        <label className="field">
+          <span>Trabajo solicitado para alineacion y balanceo</span>
+          <textarea
+            rows="4"
+            disabled={!cabecera.RequiereAlineacionBalanceo}
+            placeholder="Indique que se debe realizar en el area de alineacion y balanceo"
+            value={cabecera.ObservacionAlineacionBalanceo || ""}
+            onChange={(event) => onCabeceraChange("ObservacionAlineacionBalanceo", event.target.value)}
+          />
+        </label>
+      </section>
+
       <DetalleForm
         detalle={detalle}
         nuevoTrabajo={nuevoTrabajo}
@@ -68,8 +95,8 @@ export default function CrearOTView({
       />
 
       <section className="section-grid">
-        <FirmasForm sigCliente={sigCliente} sigRecep={sigRecep} />
         <EvidenciasForm ev1={ev1} ev2={ev2} onEv1Change={onEv1Change} onEv2Change={onEv2Change} />
+        <FirmasForm sigCliente={sigCliente} sigRecep={sigRecep} />
       </section>
 
       <ActionsBar guardando={guardando} onGuardar={onGuardar} />

@@ -179,6 +179,15 @@ export default function SalidaOTView({ api }) {
                 {selected.TrabajoRealizado || "Sin detalle de trabajo realizado."}
               </p>
 
+                            {selected.RequiereAlineacionBalanceo ? (
+                <>
+                  <h4>Detalle de alineacion y balanceo</h4>
+                  <p className="notes-preview">
+                    {selected.TrabajoAlineacionBalanceo || "Sin detalle de alineacion y balanceo."}
+                  </p>
+                </>
+              ) : null}
+
               <div className="workshop-actions">
                 <span>Confirme la salida solo cuando el vehiculo se entregue al cliente.</span>
                 <button className="primary-button" type="button" onClick={autorizarSalida} disabled={saving}>

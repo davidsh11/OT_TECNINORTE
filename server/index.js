@@ -95,11 +95,23 @@ function latestRecord(records) {
   }, records[0]);
 }
 
-function isCompleted(ot) {
+function hasAlignmentBalanceWork(ot) {
+  return Boolean(ot?.RequiereAlineacionBalanceo);
+}
+
+function isAlignmentBalanceCompleted(ot) {
+  if (!hasAlignmentBalanceWork(ot)) return true;
+  return Boolean(ot?.FechaAlineacionBalanceo) && normalizeText(ot?.TrabajoAlineacionBalanceo) !== "";
+}
+
+function isMechanicalCompleted(ot) {
   const estado = normalizeText(ot.Estado);
   return Boolean(ot.FechaEntrega) || ["entregado", "completado", "finalizado", "finalizada"].includes(estado);
 }
 
+function isCompleted(ot) {
+  return isMechanicalCompleted(ot) && isAlignmentBalanceCompleted(ot);
+}
 function hasChargeValue(ot) {
   return normalizeText(ot.ValorCobrar) !== "";
 }
@@ -112,13 +124,47 @@ function parseMoney(value) {
 function otAmounts(ot) {
   const laborAmount = parseMoney(ot.ValorCobrar);
   const partsAmount = parseMoney(ot.ValorRepuestos);
+  const alignmentAmount = parseMoney(ot.ValorAlineacionBalanceo);
   return {
     laborAmount,
     partsAmount,
-    totalAmount: laborAmount + partsAmount
+    alignmentAmount,
+    totalAmount: laborAmount + partsAmount + alignmentAmount
   };
 }
+function moneyText(value) {
+  return Number(value || 0).toFixed(2);
+}
 
+function pendingAmount(ot) {
+  const { totalAmount } = otAmounts(ot);
+
+  if (ot?.PagoParcialPendiente) {
+    const savedBalance = parseMoney(ot.SaldoPendiente);
+    if (savedBalance > 0) return savedBalance;
+
+    return Math.max(totalAmount - parseMoney(ot.ValorAbonado), 0);
+  }
+
+  if (ot?.PagoPendienteEmpresa) {
+    return totalAmount;
+  }
+
+  return ot?.Cobrado ? 0 : totalAmount;
+}
+
+function otListPayload(ot) {
+  const { totalAmount } = otAmounts(ot);
+  const pending = pendingAmount(ot);
+
+  return {
+    ...ot,
+    ValorTotal: moneyText(totalAmount),
+    ValorPendienteCobro: moneyText(pending),
+    SaldoPendiente: pending > 0 ? moneyText(pending) : upperText(ot.SaldoPendiente),
+    EstadoProceso: ot.Cobrado && ot.SalidaAutorizada ? "FINALIZADO" : "EN PROCESO"
+  };
+}
 function readDate(value) {
   if (!value) return null;
   if (typeof value === "string") {
@@ -173,7 +219,7 @@ function processStatus(ot) {
 function mechanicTrackingStatus(ot) {
   const mechanic = upperText(ot.MecanicoResponsable || ot.MecanicoAsignadoNombre || ot.MecanicoAsignado);
   const estado = normalizeText(ot.Estado);
-  const delivered = isCompleted(ot);
+  const delivered = isMechanicalCompleted(ot);
   const closed = Boolean(ot.SalidaAutorizada);
   const charged = Boolean(ot.Cobrado);
   const hasWorkshopProgress = Boolean(
@@ -189,6 +235,12 @@ function mechanicTrackingStatus(ot) {
   return "pendiente";
 }
 
+function alignmentTrackingStatus(ot) {
+  if (!ot?.RequiereAlineacionBalanceo) return "finalizada";
+  if (ot.FechaAlineacionBalanceo && normalizeText(ot.TrabajoAlineacionBalanceo)) return "finalizada";
+  if (ot.FechaInicioAlineacionBalanceo || normalizeText(ot.EstadoAlineacionBalanceo) === "realizando") return "realizando";
+  return "pendiente";
+}
 function trackingOtPayload(ot) {
   const mechanic = upperText(ot.MecanicoResponsable || ot.MecanicoAsignadoNombre || ot.MecanicoAsignado);
   const status = mechanicTrackingStatus(ot);
@@ -210,6 +262,13 @@ function trackingOtPayload(ot) {
     FechaSalida: displayDate(ot.FechaSalida),
     TrabajoRealizado: sentenceText(ot.TrabajoRealizado),
     RepuestosUsados: sentenceText(ot.RepuestosUsados),
+    RequiereAlineacionBalanceo: Boolean(ot.RequiereAlineacionBalanceo),
+    MecanicoAlineacionBalanceo: upperText(ot.MecanicoAlineacionBalanceo),
+    EstadoAlineacionBalanceo: upperText(ot.EstadoAlineacionBalanceo),
+    FechaInicioAlineacionBalanceo: displayDate(ot.FechaInicioAlineacionBalanceo),
+    FechaAlineacionBalanceo: displayDate(ot.FechaAlineacionBalanceo),
+    ObservacionAlineacionBalanceo: sentenceText(ot.ObservacionAlineacionBalanceo),
+    TrabajoAlineacionBalanceo: sentenceText(ot.TrabajoAlineacionBalanceo),
     Cobrado: Boolean(ot.Cobrado),
     EsEmpresa: Boolean(ot.EsEmpresa),
     PagoPendienteEmpresa: Boolean(ot.PagoPendienteEmpresa),
@@ -298,7 +357,15 @@ function buildCabecera(cabecera, otId) {
     RepuestosUsados: sentenceText(cabecera?.RepuestosUsados),
     TrabajoRealizado: sentenceText(cabecera?.TrabajoRealizado),
     ValorCobrar: upperText(cabecera?.ValorCobrar),
+    ValorAlineacionBalanceo: upperText(cabecera?.ValorAlineacionBalanceo),
     ValorRepuestos: upperText(cabecera?.ValorRepuestos),
+    RequiereAlineacionBalanceo: Boolean(cabecera?.RequiereAlineacionBalanceo),
+    MecanicoAlineacionBalanceo: Boolean(cabecera?.RequiereAlineacionBalanceo) ? "FERNANDOS" : "",
+    EstadoAlineacionBalanceo: Boolean(cabecera?.RequiereAlineacionBalanceo) ? upperText(cabecera?.EstadoAlineacionBalanceo || "PENDIENTE") : "",
+    FechaInicioAlineacionBalanceo: upperText(cabecera?.FechaInicioAlineacionBalanceo),
+    FechaAlineacionBalanceo: upperText(cabecera?.FechaAlineacionBalanceo),
+    TrabajoAlineacionBalanceo: sentenceText(cabecera?.TrabajoAlineacionBalanceo),
+    ObservacionAlineacionBalanceo: sentenceText(cabecera?.ObservacionAlineacionBalanceo),
     EsEmpresa: Boolean(cabecera?.EsEmpresa),
     PagoPendienteEmpresa: Boolean(cabecera?.PagoPendienteEmpresa),
     FechaPagoPendienteEmpresa: upperText(cabecera?.FechaPagoPendienteEmpresa),
@@ -840,6 +907,9 @@ app.get("/api/ot", async (req, res) => {
           ot.MecanicoAsignado,
           ot.MecanicoAsignadoNombre,
           ot.MecanicoResponsable,
+          ot.MecanicoAlineacionBalanceo,
+          ot.TrabajoAlineacionBalanceo,
+          ot.ObservacionAlineacionBalanceo,
           ot.ValorCobrar,
           ot.ValorRepuestos,
           ot.Cobrado ? "cobrado" : "",
@@ -856,7 +926,8 @@ app.get("/api/ot", async (req, res) => {
         [
           ot.MecanicoResponsable,
           ot.MecanicoAsignado,
-          ot.MecanicoAsignadoNombre
+          ot.MecanicoAsignadoNombre,
+          ot.MecanicoAlineacionBalanceo
         ].some((value) => normalizeText(value) === assignedTo)
       );
     }
@@ -870,7 +941,7 @@ app.get("/api/ot", async (req, res) => {
     }
 
     if (chargeReady) {
-      ordenes = ordenes.filter((ot) => isCompleted(ot) && hasChargeValue(ot) && !ot.Cobrado && !ot.PagoPendienteEmpresa && !ot.PagoParcialPendiente);
+      ordenes = ordenes.filter((ot) => isCompleted(ot) && hasChargeValue(ot) && !ot.Cobrado);
     }
 
     if (paid) {
@@ -881,10 +952,7 @@ app.get("/api/ot", async (req, res) => {
       ordenes = ordenes.filter((ot) => (Boolean(ot.Cobrado) || Boolean(ot.PagoPendienteEmpresa) || Boolean(ot.PagoParcialPendiente)) && !ot.SalidaAutorizada);
     }
 
-    ordenes = ordenes.map((ot) => ({
-      ...ot,
-      EstadoProceso: ot.Cobrado && ot.SalidaAutorizada ? "FINALIZADO" : "EN PROCESO"
-    }));
+    ordenes = ordenes.map(otListPayload);
 
     res.json({ ok: true, ordenes });
   } catch (e) {
@@ -903,11 +971,29 @@ app.get("/api/ot/seguimiento", async (req, res) => {
       .limit(limit)
       .get();
 
-    const ordenes = snapshot.docs.map((doc) => trackingOtPayload({
+    const baseOrdenes = snapshot.docs.map((doc) => ({
       ID: doc.id,
       ...doc.data()
     }));
-    const pendientesSalida = ordenes.filter((ot) => (ot.Cobrado || ot.PagoPendienteEmpresa || ot.PagoParcialPendiente) && !ot.SalidaAutorizada);
+    const ordenes = baseOrdenes.flatMap((ot) => {
+      const rows = [trackingOtPayload(ot)];
+
+      if (ot.RequiereAlineacionBalanceo) {
+        rows.push({
+          ...trackingOtPayload(ot),
+          MecanicoResponsable: "FERNANDOS",
+          AreaTrabajo: "ALINEACION Y BALANCEO",
+          EstadoSeguimiento: alignmentTrackingStatus(ot),
+          FechaInicioTrabajo: displayDate(ot.FechaInicioAlineacionBalanceo),
+          FechaEntrega: displayDate(ot.FechaAlineacionBalanceo),
+          TrabajoRealizado: sentenceText(ot.TrabajoAlineacionBalanceo),
+          ObservacionAlineacionBalanceo: sentenceText(ot.ObservacionAlineacionBalanceo)
+        });
+      }
+
+      return rows;
+    });
+    const pendientesSalida = ordenes.filter((ot) => !ot.AreaTrabajo && (ot.Cobrado || ot.PagoPendienteEmpresa || ot.PagoParcialPendiente) && !ot.SalidaAutorizada);
     const activas = ordenes.filter((ot) => !ot.Cobrado && !ot.PagoPendienteEmpresa && !ot.PagoParcialPendiente && !ot.SalidaAutorizada && ot.EstadoSeguimiento !== "finalizada");
     const mecanicosMap = new Map();
 
@@ -1078,6 +1164,7 @@ app.get("/api/historial", async (req, res) => {
           FechaSalida: displayDate(ot.FechaSalida),
           FechaPagoPendienteEmpresa: displayDate(ot.FechaPagoPendienteEmpresa),
           ValorCobrar: upperText(ot.ValorCobrar),
+          ValorAlineacionBalanceo: upperText(ot.ValorAlineacionBalanceo),
           ValorRepuestos: upperText(ot.ValorRepuestos),
           EsEmpresa: Boolean(ot.EsEmpresa),
           PagoPendienteEmpresa: Boolean(ot.PagoPendienteEmpresa),
@@ -1086,6 +1173,11 @@ app.get("/api/historial", async (req, res) => {
           Observaciones: upperText(ot.Observaciones),
           TrabajoRealizado: sentenceText(ot.TrabajoRealizado),
           RepuestosUsados: sentenceText(ot.RepuestosUsados),
+          RequiereAlineacionBalanceo: Boolean(ot.RequiereAlineacionBalanceo),
+          MecanicoAlineacionBalanceo: upperText(ot.MecanicoAlineacionBalanceo),
+          TrabajoAlineacionBalanceo: sentenceText(ot.TrabajoAlineacionBalanceo),
+          ObservacionAlineacionBalanceo: sentenceText(ot.ObservacionAlineacionBalanceo),
+          FechaAlineacionBalanceo: displayDate(ot.FechaAlineacionBalanceo),
           Evidencia1Path: ot.Evidencia1Path || "",
           Evidencia2Path: ot.Evidencia2Path || "",
           FirmaClientePath: ot.FirmaClientePath || "",
@@ -1289,7 +1381,9 @@ app.patch("/api/ot/:id/cobro", async (req, res) => {
       return res.status(404).json({ ok: false, error: "OT no encontrada" });
     }
 
-    if (otSnapshot.data()?.Cobrado) {
+    const currentOt = otSnapshot.data() || {};
+
+    if (currentOt.Cobrado) {
       return res.status(409).json({
         ok: false,
         error: "La OT ya fue cobrada y no se puede editar el valor de mano de obra"
@@ -1298,6 +1392,7 @@ app.patch("/api/ot/:id/cobro", async (req, res) => {
 
     await otRef.update({
       ValorCobrar: upperText(valorCobrar),
+      ValorAlineacionBalanceo: upperText(req.body?.ValorAlineacionBalanceo ?? currentOt.ValorAlineacionBalanceo ?? ""),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -1325,9 +1420,9 @@ app.patch("/api/ot/:id/pago", async (req, res) => {
     const partialPendingPayment = Boolean(req.body?.PagoParcialPendiente);
     const valorRepuestos = upperText(req.body?.ValorRepuestos ?? currentOt.ValorRepuestos ?? "");
     const valorAbonado = upperText(req.body?.ValorAbonado ?? "");
-    const totalAmount = parseMoney(currentOt.ValorCobrar) + parseMoney(valorRepuestos);
+    const totalAmount = parseMoney(currentOt.ValorCobrar) + parseMoney(valorRepuestos) + parseMoney(currentOt.ValorAlineacionBalanceo);
     const paidAmount = parseMoney(valorAbonado);
-    const saldoPendiente = partialPendingPayment ? Math.max(totalAmount - paidAmount, 0) : 0;
+    const saldoPendiente = pendingCompanyPayment ? totalAmount : partialPendingPayment ? Math.max(totalAmount - paidAmount, 0) : 0;
 
     if (pendingCompanyPayment && !isCompany) {
       return res.status(400).json({
@@ -1353,7 +1448,7 @@ app.patch("/api/ot/:id/pago", async (req, res) => {
       FechaPagoPendienteEmpresa: pendingCompanyPayment ? now : "",
       PagoParcialPendiente: partialPendingPayment,
       ValorAbonado: partialPendingPayment ? valorAbonado : "",
-      SaldoPendiente: partialPendingPayment ? saldoPendiente.toFixed(2) : "",
+      SaldoPendiente: hasPendingPayment ? saldoPendiente.toFixed(2) : "",
       FechaPagoParcial: partialPendingPayment ? now : "",
       Cobrado: hasPendingPayment ? false : true,
       FechaCobro: hasPendingPayment ? "" : now,
@@ -1409,6 +1504,8 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
     const { db } = getFirebase();
     const id = String(req.params.id);
     const mecanico = upperText(req.body?.MecanicoResponsable);
+    const area = normalizeText(req.body?.AreaTrabajo);
+    const isAlignmentArea = area === "alineacion_balanceo";
     const otRef = db.collection(OT_COLLECTION).doc(id);
     const otSnapshot = await otRef.get();
 
@@ -1417,7 +1514,7 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
     }
 
     const currentOt = otSnapshot.data() || {};
-    const assignedMechanic = upperText(currentOt.MecanicoResponsable);
+    const assignedMechanic = isAlignmentArea ? upperText(currentOt.MecanicoAlineacionBalanceo || "FERNANDOS") : upperText(currentOt.MecanicoResponsable);
 
     if (!assignedMechanic) {
       return res.status(400).json({ ok: false, error: "La OT no tiene mecanico asignado" });
@@ -1427,8 +1524,24 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
       return res.status(403).json({ ok: false, error: "La OT esta asignada a otro mecanico" });
     }
 
-    if (isCompleted(currentOt) || currentOt.Cobrado || currentOt.SalidaAutorizada) {
+    if (currentOt.Cobrado || currentOt.SalidaAutorizada || (!isAlignmentArea && isCompleted(currentOt))) {
       return res.status(409).json({ ok: false, error: "La OT ya no esta disponible para iniciar trabajo" });
+    }
+
+    if (isAlignmentArea) {
+      const startDate = currentOt.FechaInicioAlineacionBalanceo || new Date().toISOString();
+      await otRef.update({
+        FechaInicioAlineacionBalanceo: startDate,
+        EstadoAlineacionBalanceo: "REALIZANDO",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return res.json({
+        ok: true,
+        otId: id,
+        FechaInicioAlineacionBalanceo: startDate,
+        EstadoAlineacionBalanceo: "REALIZANDO"
+      });
     }
 
     const startDate = currentOt.FechaInicioTrabajo || new Date().toISOString();
@@ -1458,6 +1571,8 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
     const id = String(req.params.id);
     const cabecera = req.body?.cabecera || {};
     const userRole = normalizeText(req.body?.userRole);
+    const area = normalizeText(req.body?.areaTrabajo || req.body?.AreaTrabajo);
+    const isAlignmentArea = area === "alineacion_balanceo";
     const otRef = db.collection(OT_COLLECTION).doc(id);
     const otSnapshot = await otRef.get();
 
@@ -1475,6 +1590,28 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       });
     }
 
+    if (isAlignmentArea) {
+      if (!hasAlignmentBalanceWork(currentOt)) {
+        return res.status(400).json({ ok: false, error: "La OT no tiene alineacion y balanceo asignado" });
+      }
+
+      if (!String(cabecera.TrabajoAlineacionBalanceo || "").trim()) {
+        return res.status(400).json({ ok: false, error: "Ingrese el trabajo realizado en alineacion y balanceo" });
+      }
+
+      const finishDate = cabecera.FechaAlineacionBalanceo || new Date().toISOString();
+
+      await otRef.update({
+        MecanicoAlineacionBalanceo: "FERNANDOS",
+        TrabajoAlineacionBalanceo: sentenceText(cabecera.TrabajoAlineacionBalanceo),
+        FechaAlineacionBalanceo: upperText(finishDate),
+        EstadoAlineacionBalanceo: "FINALIZADO",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return res.json({ ok: true, otId: id });
+    }
+
     const nextEstado = cabecera.Estado || "Recibido";
     const isFinalState = ["finalizado", "finalizada", "entregado", "completado"].includes(normalizeText(nextEstado));
 
@@ -1487,7 +1624,6 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
     }
 
     const assignedMechanic = upperText(cabecera.MecanicoResponsable);
-    const previousMechanic = upperText(currentOt.MecanicoResponsable);
 
     await otRef.update({
       MecanicoResponsable: assignedMechanic,
@@ -1498,8 +1634,7 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    const responsePayload = { ok: true, otId: id };
-    res.json(responsePayload);
+    res.json({ ok: true, otId: id });
   } catch (e) {
     console.error("PATCH /api/ot/:id/taller fallo:", e);
     res.status(500).json({ ok: false, error: e.message });

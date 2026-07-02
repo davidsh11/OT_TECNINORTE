@@ -1,4 +1,4 @@
-﻿import { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import axios from "axios";
 import AppMenu from "./components/AppMenu";
 import BrandHeader from "./components/BrandHeader";
@@ -55,6 +55,16 @@ export default function App() {
   const sigRecep = useRef(null);
 
   const updateCabecera = (key, value) => {
+    if (key === "RequiereAlineacionBalanceo") {
+      setCabecera((current) => ({
+        ...current,
+        RequiereAlineacionBalanceo: Boolean(value),
+        MecanicoAlineacionBalanceo: Boolean(value) ? "FERNANDOS" : "",
+        ObservacionAlineacionBalanceo: Boolean(value) ? current.ObservacionAlineacionBalanceo : ""
+      }));
+      return;
+    }
+
     let nextValue = uppercaseValue(value);
 
     if (key === "Telefonos") {

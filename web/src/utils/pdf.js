@@ -103,7 +103,8 @@ export function writePdfTab(tab, data) {
       (data.cabecera.MecanicoResponsable ||
         data.cabecera.FechaEntrega ||
         data.cabecera.RepuestosUsados ||
-        data.cabecera.TrabajoRealizado)
+        data.cabecera.TrabajoRealizado ||
+        data.cabecera.TrabajoAlineacionBalanceo)
   );
   const evidenceBlocks = data.evidencias
     .filter((item) => item.src)
@@ -392,6 +393,14 @@ export function writePdfTab(tab, data) {
                   <div class="notes">${escapeHtml(
                     data.cabecera.TrabajoRealizado || "Sin detalle de trabajo realizado."
                   )}</div>
+                  ${
+                    data.cabecera.RequiereAlineacionBalanceo || data.cabecera.TrabajoAlineacionBalanceo
+                      ? `<h2>Detalle de alineacion y balanceo</h2>
+                        <div class="notes">${escapeHtml(
+                          data.cabecera.TrabajoAlineacionBalanceo || "Sin detalle de alineacion y balanceo."
+                        )}</div>`
+                      : ""
+                  }
                 </section>`
               : ""
           }
@@ -405,6 +414,12 @@ export function writePdfTab(tab, data) {
               <tbody>${detalleRows}</tbody>
             </table>
           </section>
+
+          ${
+            evidenceBlocks
+              ? `<section><h2>Evidencias</h2><div class="evidences">${evidenceBlocks}</div></section>`
+              : ""
+          }
 
           <section>
             <h2>Firmas</h2>
@@ -428,11 +443,6 @@ export function writePdfTab(tab, data) {
             </div>
           </section>
 
-          ${
-            evidenceBlocks
-              ? `<section><h2>Evidencias</h2><div class="evidences">${evidenceBlocks}</div></section>`
-              : ""
-          }
           <section class="conditions">
             <h2>Condiciones de servicio de este taller</h2>
             <ol>

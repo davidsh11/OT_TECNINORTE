@@ -99,6 +99,10 @@ function toHistoryItem(ot, detalle = []) {
     SalidaAutorizada: Boolean(ot.SalidaAutorizada),
     Observaciones: normalizeText(ot.Observaciones),
     TrabajoRealizado: ot.TrabajoRealizado || "",
+    RequiereAlineacionBalanceo: Boolean(ot.RequiereAlineacionBalanceo),
+    MecanicoAlineacionBalanceo: ot.MecanicoAlineacionBalanceo || "",
+    TrabajoAlineacionBalanceo: ot.TrabajoAlineacionBalanceo || "",
+    ValorAlineacionBalanceo: normalizeText(ot.ValorAlineacionBalanceo),
     RepuestosUsados: ot.RepuestosUsados || "",
     trabajos,
     repuestos,
@@ -273,10 +277,14 @@ export default function HistorialOTView({ api }) {
         ValorAbonado: item.ValorAbonado,
         SaldoPendiente: item.SaldoPendiente,
         RepuestosUsados: item.RepuestosUsados,
-        TrabajoRealizado: item.TrabajoRealizado
+        TrabajoRealizado: item.TrabajoRealizado,
+        RequiereAlineacionBalanceo: item.RequiereAlineacionBalanceo,
+        MecanicoAlineacionBalanceo: item.MecanicoAlineacionBalanceo,
+        TrabajoAlineacionBalanceo: item.TrabajoAlineacionBalanceo,
+        ValorAlineacionBalanceo: item.ValorAlineacionBalanceo
       },
       detalle: detallePdf,
-      includeInternal: false,
+      includeInternal: true,
       firmas: {
         cliente: "",
         recepcion: ""
@@ -321,6 +329,13 @@ export default function HistorialOTView({ api }) {
       .map((item) => {
         const trabajos = item.TrabajoRealizado || "";
         const repuestos = item.RepuestosUsados || "";
+        const alineacionBalanceo = item.TrabajoAlineacionBalanceo || "";
+        const alignmentBlock = item.RequiereAlineacionBalanceo || alineacionBalanceo
+          ? `<div>
+                <h3>Alineacion y balanceo</h3>
+                <p>${escapeHtml(alineacionBalanceo || "SIN DETALLE DE ALINEACION Y BALANCEO.")}</p>
+              </div>`
+          : "";
 
         return `
           <article class="visit">
@@ -359,6 +374,7 @@ export default function HistorialOTView({ api }) {
                 <h3>Repuestos utilizados</h3>
                 <p>${escapeHtml(repuestos || "SIN REPUESTOS REGISTRADOS.")}</p>
               </div>
+              ${alignmentBlock}
             </div>
           </article>`;
       })
@@ -712,6 +728,14 @@ export default function HistorialOTView({ api }) {
                 <p className="notes-preview">
                   {item.TrabajoRealizado || "SIN TRABAJOS REGISTRADOS."}
                 </p>
+              {item.RequiereAlineacionBalanceo ? (
+                <>
+                  <h4>Alineacion y balanceo</h4>
+                  <p className="notes-preview">
+                    {item.TrabajoAlineacionBalanceo || "SIN DETALLE DE ALINEACION Y BALANCEO."}
+                  </p>
+                </>
+              ) : null}
               </div>
               <div>
                 <h4>Repuestos utilizados</h4>

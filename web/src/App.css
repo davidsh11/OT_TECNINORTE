@@ -829,6 +829,21 @@ button:disabled {
   background: #e8f8ee;
 }
 
+.ot-status-pill.status-pendiente {
+  background: #fff7ed;
+  color: var(--warning);
+}
+
+.ot-status-pill.status-realizando {
+  background: var(--accent-soft);
+  color: var(--accent-blue);
+}
+
+.ot-status-pill.status-finalizada {
+  background: #e8f8ee;
+  color: var(--success);
+}
+
 .ot-pagination {
   display: flex;
   align-items: center;

@@ -249,6 +249,7 @@ export default function SeguimientoMecanicosView({ api }) {
             </div>
             <div>
               <span>{ot.MecanicoResponsable || "Sin asignar"}</span>
+              <small>{ot.AreaTrabajo || "MECANICA"}</small>
               <small>{formatDate(ot.FechaRecepcion)}</small>
             </div>
             <span className={`tracking-status ${ot.EstadoSeguimiento}`}>{statusText(ot.EstadoSeguimiento)}</span>
