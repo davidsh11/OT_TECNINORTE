@@ -1666,6 +1666,33 @@ button:disabled {
   margin: 0;
 }
 
+.mechanic-state.doing {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+}
+
+.mechanic-state.pending {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+}
+
+.mechanic-state.done {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+}
+
+.mechanic-state.doing dd {
+  color: #1d4ed8;
+}
+
+.mechanic-state.pending dd {
+  color: #b45309;
+}
+
+.mechanic-state.done dd {
+  color: #15803d;
+}
+
 .mechanic-card h3 {
   color: var(--ink);
   font-size: 18px;
@@ -1743,6 +1770,22 @@ button:disabled {
   background: #ffffff;
 }
 
+
+.tracking-row.status-realizando {
+  border-left: 6px solid #2563eb;
+}
+
+.tracking-row.status-pendiente {
+  border-left: 6px solid #f59e0b;
+}
+
+.tracking-row.status-finalizada {
+  border-left: 6px solid #16a34a;
+}
+
+.tracking-row.status-sin_asignar {
+  border-left: 6px solid #dc2626;
+}
 .tracking-row div {
   display: grid;
   gap: 4px;
@@ -1776,6 +1819,10 @@ button:disabled {
 
 .tracking-status.realizando {
   background: var(--accent-2);
+}
+
+.tracking-status.finalizada {
+  background: #16a34a;
 }
 
 @media (max-width: 900px) {

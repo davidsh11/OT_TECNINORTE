@@ -205,7 +205,7 @@ export default function ReportesOTView({ api }) {
         <article className="report-kpi">
           <span>Mano de obra</span>
           <strong>{formatMoney(summary.montoManoObra)}</strong>
-          <small>Monto general menos repuestos</small>
+          <small>Total de mano de obra</small>
         </article>
       </div>
 
@@ -221,8 +221,11 @@ export default function ReportesOTView({ api }) {
           {byMechanic.length === 0 ? (
             <p className="empty-state">No hay datos para graficar.</p>
           ) : (
-            byMechanic.map((item) => (
-              <article className="mechanic-bar" key={item.mecanico}>
+            byMechanic.map((item) => {
+              const laborLabel = item.mecanico === "FERNANDOS" ? "Mano de obra + alineacion" : "Mano de obra";
+
+              return (
+                <article className="mechanic-bar" key={item.mecanico}>
                 <div className="mechanic-bar-label">
                   <strong>{item.mecanico}</strong>
                   <span>{item.cantidadOt} OT</span>
@@ -233,12 +236,13 @@ export default function ReportesOTView({ api }) {
                 <div className="mechanic-bar-values">
                   <strong>{formatMoney(item.montoGenerado)}</strong>
                   <small>
-                    Repuestos {formatMoney(item.montoRepuestos)} / Mano de obra {formatMoney(item.montoManoObra)}
+                    Repuestos {formatMoney(item.montoRepuestos)} / {laborLabel} {formatMoney(item.montoManoObra)}
                   </small>
                   <small>Cobrado {formatMoney(item.montoCobrado)} / Pendiente {formatMoney(item.montoPendiente)}</small>
                 </div>
               </article>
-            ))
+              );
+            })
           )}
         </div>
       </section>
@@ -334,6 +338,7 @@ export default function ReportesOTView({ api }) {
                 </span>
                 <strong>{formatMoney(ot.ValorTotal)}</strong>
                 <span>Rep. {formatMoney(ot.ValorRepuestos)}</span>
+                {Number(ot.ValorAlineacionBalanceo || 0) > 0 ? <span>Alin. {formatMoney(ot.ValorAlineacionBalanceo)}</span> : null}
                 <small>{formatDate(ot.FechaCobro || ot.FechaEntrega || ot.FechaRecepcion)}</small>
               </article>
             ))

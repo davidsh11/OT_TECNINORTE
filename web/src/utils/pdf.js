@@ -381,6 +381,18 @@ export function writePdfTab(tab, data) {
           </section>
 
           ${
+            data.cabecera.RequiereAlineacionBalanceo || data.cabecera.ObservacionAlineacionBalanceo
+              ? `<section>
+                  <h2>Trabajo solicitado para alineacion y balanceo</h2>
+                  <div class="notes">${escapeHtml(
+                    data.cabecera.ObservacionAlineacionBalanceo || "Sin observacion registrada para alineacion y balanceo."
+                  )}</div>
+                </section>`
+              : ""
+          }
+
+
+          ${
             hasInternalInfo
               ? `<section>
                   <h2>Entrega y trabajo realizado</h2>

@@ -1,4 +1,4 @@
-﻿export const users = [
+export const users = [
   {
     username: "recepcion",
     password: "1234",
@@ -18,7 +18,7 @@
     password: "1234",
     role: "jefe_taller",
     name: "Jefe de taller",
-    allowedViews: ["inicio", "historial", "taller", "seguimiento", "cierre", "reportes"],
+    allowedViews: ["inicio", "buscar", "historial", "taller", "seguimiento", "cierre", "reportes"],
     canAssignOt: true
   },
   {

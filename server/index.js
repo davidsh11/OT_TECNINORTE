@@ -1,4 +1,4 @@
-﻿console.log("BOOT:", __filename);
+console.log("BOOT:", __filename);
 
 const express = require("express");
 const cors = require("cors");
@@ -286,7 +286,7 @@ const MONTH_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "S
 const DEFAULT_SYSTEM_USERS = [
   { username: "recepcion", password: "1234", role: "recepcion", name: "Recepcion", allowedViews: ["inicio", "crear", "buscar", "historial", "seguimiento", "salida"] },
   { username: "cobranza", password: "1234", role: "cobranza", name: "Cobranza", allowedViews: ["inicio", "datosClientes", "buscar", "historial", "seguimiento", "cobranza"] },
-  { username: "jefe", password: "1234", role: "jefe_taller", name: "Jefe de taller", allowedViews: ["inicio", "historial", "taller", "seguimiento", "cierre", "reportes"], canAssignOt: true },
+  { username: "jefe", password: "1234", role: "jefe_taller", name: "Jefe de taller", allowedViews: ["inicio", "buscar", "historial", "taller", "seguimiento", "cierre", "reportes"], canAssignOt: true },
   { username: "angelf", password: "1234", role: "mecanico", name: "ANGELF", mechanicId: "ANGELF", allowedViews: ["inicio", "taller"], canAssignOt: false },
   { username: "fernandos", password: "1234", role: "mecanico", name: "FERNANDOS", mechanicId: "FERNANDOS", allowedViews: ["inicio", "taller"], canAssignOt: false },
   { username: "diegom", password: "1234", role: "mecanico", name: "DIEGOM", mechanicId: "DIEGOM", allowedViews: ["inicio", "taller"], canAssignOt: false },
@@ -308,6 +308,11 @@ function publicSystemUser(user) {
     views.delete("reportes");
     views.add("buscar");
     views.add("seguimiento");
+    safeUser.allowedViews = Array.from(views);
+  }
+  if (safeUser.role === "jefe_taller") {
+    const views = new Set(safeUser.allowedViews || []);
+    views.add("buscar");
     safeUser.allowedViews = Array.from(views);
   }
   return safeUser;
@@ -1243,7 +1248,10 @@ app.get("/api/reports/finance", async (req, res) => {
     }
 
     if (mechanic) {
-      ordenes = ordenes.filter((ot) => normalizeText(ot.MecanicoResponsable) === mechanic);
+      ordenes = ordenes.filter((ot) => (
+        normalizeText(ot.MecanicoResponsable) === mechanic ||
+        normalizeText(ot.MecanicoAlineacionBalanceo) === mechanic
+      ));
     }
 
     const monthly = MONTH_LABELS.map((month) => ({
@@ -1258,10 +1266,10 @@ app.get("/api/reports/finance", async (req, res) => {
       if (!date || date.getFullYear() !== reportYear) return;
 
       const monthIndex = date.getMonth();
-      const { laborAmount, partsAmount, totalAmount } = otAmounts(ot);
+      const { laborAmount, partsAmount, alignmentAmount, totalAmount } = otAmounts(ot);
 
       monthly[monthIndex].montoRepuestos += partsAmount;
-      monthly[monthIndex].montoManoObra += laborAmount;
+      monthly[monthIndex].montoManoObra += laborAmount + alignmentAmount;
       if (ot.Cobrado) {
         monthly[monthIndex].montoCobrado += totalAmount;
       }
@@ -1279,43 +1287,56 @@ app.get("/api/reports/finance", async (req, res) => {
 
     const summary = ordenes.reduce(
       (acc, ot) => {
-        const { laborAmount, partsAmount, totalAmount } = otAmounts(ot);
+        const { laborAmount, partsAmount, alignmentAmount, totalAmount } = otAmounts(ot);
+        const primaryAmount = laborAmount + partsAmount;
+        const isCharged = Boolean(ot.Cobrado);
+        const isPendingCharge = !isCharged && hasChargeValue(ot);
+        const addMechanicAmount = (mechanicName, amount, parts = 0, labor = amount) => {
+          if (amount <= 0) return;
+
+          const name = mechanicName || "Sin mecanico";
+          if (!acc.byMechanic[name]) {
+            acc.byMechanic[name] = {
+              mecanico: name,
+              cantidadOt: 0,
+              montoGenerado: 0,
+              montoCobrado: 0,
+              montoPendiente: 0,
+              montoRepuestos: 0,
+              montoManoObra: 0,
+              otIds: new Set()
+            };
+          }
+
+          if (!acc.byMechanic[name].otIds.has(ot.ID)) {
+            acc.byMechanic[name].otIds.add(ot.ID);
+            acc.byMechanic[name].cantidadOt += 1;
+          }
+          acc.byMechanic[name].montoGenerado += amount;
+          acc.byMechanic[name].montoRepuestos += parts;
+          acc.byMechanic[name].montoManoObra += labor;
+          if (isCharged) {
+            acc.byMechanic[name].montoCobrado += amount;
+          } else if (isPendingCharge) {
+            acc.byMechanic[name].montoPendiente += amount;
+          }
+        };
+
         acc.totalOt += 1;
         acc.montoGeneral += totalAmount;
         acc.montoRepuestos += partsAmount;
-        acc.montoManoObra += laborAmount;
+        acc.montoManoObra += laborAmount + alignmentAmount;
 
-        if (ot.Cobrado) {
+        if (isCharged) {
           acc.montoCobrado += totalAmount;
           acc.otCobradas += 1;
-        } else if (hasChargeValue(ot)) {
+        } else if (isPendingCharge) {
           acc.montoPendiente += totalAmount;
           acc.otPendientes += 1;
         }
 
-        const mechanicName = ot.MecanicoResponsable || "Sin mecanico";
-        if (!acc.byMechanic[mechanicName]) {
-          acc.byMechanic[mechanicName] = {
-            mecanico: mechanicName,
-            cantidadOt: 0,
-            montoGenerado: 0,
-            montoCobrado: 0,
-            montoPendiente: 0,
-            montoRepuestos: 0,
-            montoManoObra: 0
-          };
-        }
-
-        acc.byMechanic[mechanicName].cantidadOt += 1;
-        acc.byMechanic[mechanicName].montoGenerado += totalAmount;
-        acc.byMechanic[mechanicName].montoRepuestos += partsAmount;
-        acc.byMechanic[mechanicName].montoManoObra += laborAmount;
-        if (ot.Cobrado) {
-          acc.byMechanic[mechanicName].montoCobrado += totalAmount;
-        } else if (hasChargeValue(ot)) {
-          acc.byMechanic[mechanicName].montoPendiente += totalAmount;
-        }
-
+        addMechanicAmount(ot.MecanicoResponsable, primaryAmount, partsAmount, laborAmount);
+        addMechanicAmount(ot.MecanicoAlineacionBalanceo || "FERNANDOS", alignmentAmount, 0, alignmentAmount);
         return acc;
       },
       {
@@ -1343,7 +1364,9 @@ app.get("/api/reports/finance", async (req, res) => {
         montoRepuestos: summary.montoRepuestos,
         montoManoObra: summary.montoManoObra
       },
-      byMechanic: Object.values(summary.byMechanic).sort((a, b) => b.montoGenerado - a.montoGenerado),
+      byMechanic: Object.values(summary.byMechanic)
+        .map(({ otIds, ...item }) => item)
+        .sort((a, b) => b.montoGenerado - a.montoGenerado),
       monthly,
       ordenes: ordenes.map((ot) => {
         const { totalAmount } = otAmounts(ot);
@@ -1353,8 +1376,10 @@ app.get("/api/reports/finance", async (req, res) => {
           CL: ot.CL || "",
           Placa: ot.Placa || "",
           MecanicoResponsable: ot.MecanicoResponsable || "",
+          MecanicoAlineacionBalanceo: ot.MecanicoAlineacionBalanceo || "",
           ValorCobrar: ot.ValorCobrar || "",
           ValorRepuestos: ot.ValorRepuestos || "",
+          ValorAlineacionBalanceo: ot.ValorAlineacionBalanceo || "",
           ValorTotal: totalAmount,
           Cobrado: Boolean(ot.Cobrado),
           FechaCobro: ot.FechaCobro || "",

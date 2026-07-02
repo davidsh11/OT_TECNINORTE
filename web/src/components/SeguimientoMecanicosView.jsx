@@ -6,7 +6,8 @@ const statusLabels = {
   todos: "Todas",
   sin_asignar: "Sin asignar",
   pendiente: "Pendientes",
-  realizando: "Realizando"
+  realizando: "Realizando",
+  finalizada: "Finalizadas"
 };
 
 function formatDate(value) {
@@ -19,6 +20,7 @@ function statusText(status) {
   if (status === "sin_asignar") return "Sin asignar";
   if (status === "realizando") return "Realizando";
   if (status === "pendiente") return "Pendiente";
+  if (status === "finalizada") return "Finalizada";
   return "En taller";
 }
 
@@ -186,15 +188,15 @@ export default function SeguimientoMecanicosView({ api }) {
               <span>{mechanic.asignadas} OT activas</span>
             </div>
             <dl>
-              <div>
+              <div className="mechanic-state doing">
                 <dt>Realizando</dt>
                 <dd>{mechanic.realizando}</dd>
               </div>
-              <div>
+              <div className="mechanic-state pending">
                 <dt>Pendientes</dt>
                 <dd>{mechanic.pendientes}</dd>
               </div>
-              <div>
+              <div className="mechanic-state done">
                 <dt>Finalizadas</dt>
                 <dd>{mechanic.finalizadas}</dd>
               </div>
@@ -238,7 +240,7 @@ export default function SeguimientoMecanicosView({ api }) {
           <p className="empty-state">No hay OT con los filtros actuales.</p>
         ) : null}
         {filteredOrders.map((ot) => (
-          <article className="tracking-row" key={ot.ID}>
+          <article className={`tracking-row status-${ot.EstadoSeguimiento || "pendiente"}`} key={ot.ID}>
             <div>
               <strong>OT {ot.ID}</strong>
               <small>{ot.Propietario || "Sin propietario"} / CL: {ot.CL || "-"}</small>
