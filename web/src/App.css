@@ -2104,3 +2104,85 @@ button:disabled {
     justify-content: stretch;
   }
 }
+
+.prepurchase-section {
+  margin-top: 18px;
+}
+
+.prepurchase-section h4 {
+  margin: 0 0 8px;
+  color: #002b63;
+}
+
+.prepurchase-table-wrap {
+  overflow-x: auto;
+}
+
+.prepurchase-checklist {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.prepurchase-checklist th,
+.prepurchase-checklist td {
+  border: 1px solid #bfd0e8;
+  padding: 8px;
+  vertical-align: middle;
+}
+
+.prepurchase-checklist th {
+  background: #eef5ff;
+  color: #002b63;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.prepurchase-checklist th:not(:first-child):not(:last-child),
+.prepurchase-checklist .check-cell {
+  width: 92px;
+  text-align: center;
+}
+
+.prepurchase-checklist td:first-child {
+  min-width: 260px;
+  font-weight: 700;
+}
+
+.prepurchase-checklist input[type="text"],
+.prepurchase-checklist td:last-child input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #c7d6ec;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.prepurchase-checklist input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .prepurchase-checklist {
+    min-width: 620px;
+  }
+
+  .prepurchase-checklist th,
+  .prepurchase-checklist td {
+    padding: 6px 5px;
+    font-size: 0.72rem;
+  }
+
+  .prepurchase-checklist th:not(:first-child):not(:last-child),
+  .prepurchase-checklist .check-cell {
+    width: 48px;
+    min-width: 44px;
+  }
+
+  .prepurchase-checklist input[type="radio"] {
+    width: 14px;
+    height: 14px;
+  }
+}

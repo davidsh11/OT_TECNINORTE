@@ -14,6 +14,20 @@ const CLIENTES_COLLECTION = process.env.FIRESTORE_CLIENTES_COLLECTION || "Client
 const CLIENTES_VEHICULOS_COLLECTION =
   process.env.FIRESTORE_CLIENTES_VEHICULOS_COLLECTION || "ClientesVehiculos";
 const SYSTEM_USERS_COLLECTION = process.env.SYSTEM_USERS_COLLECTION || "UsuariosSistema";
+const MONTH_LABELS = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre"
+];
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
@@ -95,6 +109,14 @@ function latestRecord(records) {
   }, records[0]);
 }
 
+
+function isCurrentMonthDate(value) {
+  if (!value) return false;
+  const date = value?._seconds ? new Date(value._seconds * 1000) : new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
 function hasAlignmentBalanceWork(ot) {
   return Boolean(ot?.RequiereAlineacionBalanceo);
 }
@@ -113,7 +135,9 @@ function isCompleted(ot) {
   return isMechanicalCompleted(ot) && isAlignmentBalanceCompleted(ot);
 }
 function hasChargeValue(ot) {
-  return normalizeText(ot.ValorCobrar) !== "";
+  return [ot.ValorCobrar, ot.ValorRepuestos, ot.ValorAlineacionBalanceo].some(
+    (value) => normalizeText(value) !== ""
+  );
 }
 
 function parseMoney(value) {
@@ -255,6 +279,7 @@ function trackingOtPayload(ot) {
     MecanicoResponsable: mechanic,
     Estado: upperText(ot.Estado || "RECIBIDO"),
     EstadoSeguimiento: status,
+    FinalizadaMesActual: isCurrentMonthDate(ot.FechaEntrega),
     FechaRecepcion: displayDate(ot.FechaRecepcion),
     FechaInicioTrabajo: displayDate(ot.FechaInicioTrabajo),
     FechaEntrega: displayDate(ot.FechaEntrega),
@@ -281,8 +306,83 @@ function trackingOtPayload(ot) {
   };
 }
 
-const MONTH_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
+const PRE_COMPRA_REPORT_SECTIONS = [
+  {
+    title: "1 - Body kit",
+    items: [
+      ["body_latas", "Revisión latas"],
+      ["body_pintura", "Revisión estado pintura"],
+      ["body_choques", "Revisión choques"],
+      ["body_parabrisas", "Revisión parabrisas"],
+      ["body_puertas", "Revisión apertura y cierre cuadratura puertas"],
+      ["body_espejos", "Revisión espejos laterales"],
+      ["body_repuesto", "Revisión neumático repuesto"],
+      ["body_herramientas", "Revisión herramientas auto"],
+      ["body_botiquin", "Revisión botiquín"],
+      ["body_seguridad", "Revisión dado de seguridad"],
+      ["body_vidrios", "Revisión vidrios de puertas"],
+      ["body_kilometraje", "Revisión kilometraje"],
+      ["body_vin_chasis", "Revisión VIN visual en chasis"],
+      ["body_molduras", "Revisión molduras e insignias"],
+      ["body_opticos_focos", "Revisión ópticos y focos"],
+      ["body_antena", "Revisión antena eléctrica"],
+      ["body_alarma", "Revisión alarma"]
+    ]
+  },
+  {
+    title: "2 - Interior",
+    items: [
+      ["int_alzavidrios", "Revisión alza vidrios, controles y apertura"],
+      ["int_arranque", "Revisión arranque motor"],
+      ["int_luces_testigos", "Revisión luces y testigos tablero apagados"],
+      ["int_vibracion", "Revisión vibración ralentí"],
+      ["int_sensores_cables", "Revisión estado plásticos air bag, cinturones, bobina y cables"],
+      ["int_direccion", "Revisión dirección: tope, ruidos, vibración o golpes"],
+      ["int_nivel_embrague", "Revisión ruidos de embrague"],
+      ["int_dureza_pedal", "Revisión dureza en pedal embrague"],
+      ["int_capota", "Revisión capota eléctrica si aplica"],
+      ["int_corte_embrague", "Revisión corte de embrague"],
+      ["int_pedal_freno", "Revisión pedal de freno"],
+      ["int_aceleracion", "Revisión pedal de aceleración"],
+      ["int_bocina", "Revisión bocina"],
+      ["int_cierre", "Revisión cierre centralizado"],
+      ["int_espejos", "Revisión espejos eléctricos laterales"],
+      ["int_luces", "Revisión luces"],
+      ["int_mandos_calefaccion", "Revisión comandos calefacción y A/C"],
+      ["int_controles_volante", "Revisión controles al volante"],
+      ["int_asientos", "Revisión asientos delanteros y traseros"],
+      ["int_limpia_parabrisas", "Revisión limpia parabrisas"],
+      ["int_radio", "Revisión radio"],
+      ["int_fugas_agua", "Revisión fugas de agua radiador/calefacción"],
+      ["int_calefaccion", "Revisión calefacción"],
+      ["int_enfriamiento_ac", "Revisión enfriamiento A/C"],
+      ["int_tapices", "Revisión tapices"],
+      ["int_eficacia_freno", "Revisión eficacia freno mano"],
+      ["int_sensores_acercamiento", "Revisión sensores acercamiento"],
+      ["int_camara_retroceso", "Revisión cámara retroceso"],
+      ["int_correderas", "Revisión correderas asientos"],
+      ["int_cinturones", "Revisión cinturones seguridad"]
+    ]
+  },
+  {
+    title: "3 - Motor, chasis y seguridad",
+    items: [
+      ["mot_presion_valvulas", "Presión de válvulas / compresión"],
+      ["mot_estado_motor", "Estado general motor"],
+      ["mot_fugas", "Fugas de aceite, refrigerante o combustible"],
+      ["mot_humo", "Humo, temperatura y ralentí"],
+      ["mot_correas", "Correas, mangueras y soportes"],
+      ["mot_caja", "Caja, embrague y transmisión"],
+      ["mot_suspension", "Suspensión, bujes y amortiguadores"],
+      ["mot_frenos", "Frenos, discos y pastillas"],
+      ["mot_llantas", "Estado llantas y desgaste"],
+      ["mot_bateria", "Batería, alternador y sistema de carga"],
+      ["mot_scanner", "Scanner y códigos de falla"],
+      ["mot_sensores", "Sensores o alertas encendidas"]
+    ]
+  }
+];
+const PRE_COMPRA_REQUIRED_ITEMS = PRE_COMPRA_REPORT_SECTIONS.flatMap((section) => section.items);
 const DEFAULT_SYSTEM_USERS = [
   { username: "recepcion", password: "1234", role: "recepcion", name: "Recepción", allowedViews: ["inicio", "crear", "buscar", "historial", "seguimiento", "salida"] },
   { username: "cobranza", password: "1234", role: "cobranza", name: "Cobranza", allowedViews: ["inicio", "datosClientes", "buscar", "historial", "seguimiento", "cobranza"] },
@@ -342,6 +442,26 @@ async function getSystemUser(db, username) {
 }
 
 
+
+function normalizePreCompraReport(report = {}) {
+  const safeReport = report && typeof report === "object" ? report : {};
+  const safeItems = safeReport.items && typeof safeReport.items === "object" ? safeReport.items : {};
+  const items = {};
+
+  PRE_COMPRA_REQUIRED_ITEMS.forEach(([itemId]) => {
+    const current = safeItems[itemId] && typeof safeItems[itemId] === "object" ? safeItems[itemId] : {};
+    items[itemId] = {
+      estado: upperText(current.estado).toLowerCase(),
+      observacion: sentenceText(current.observacion)
+    };
+  });
+
+  return {
+    items,
+    observacionRuta: sentenceText(safeReport.observacionRuta),
+    conclusionCliente: sentenceText(safeReport.conclusionCliente)
+  };
+}
 function buildCabecera(cabecera, otId) {
   return {
     ID: otId,
@@ -361,6 +481,9 @@ function buildCabecera(cabecera, otId) {
     MecanicoResponsable: upperText(cabecera?.MecanicoResponsable),
     RepuestosUsados: sentenceText(cabecera?.RepuestosUsados),
     TrabajoRealizado: sentenceText(cabecera?.TrabajoRealizado),
+    RequiereChequeoPreCompra: Boolean(cabecera?.RequiereChequeoPreCompra),
+    ObservacionPreCompra: sentenceText(cabecera?.ObservacionPreCompra),
+    InformePreCompra: normalizePreCompraReport(cabecera?.InformePreCompra),
     ValorCobrar: upperText(cabecera?.ValorCobrar),
     ValorAlineacionBalanceo: upperText(cabecera?.ValorAlineacionBalanceo),
     ValorRepuestos: upperText(cabecera?.ValorRepuestos),
@@ -1016,6 +1139,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
             MecanicoResponsable: alignmentMechanic || "FERNANDOS",
             AreaTrabajo: "ALINEACION Y BALANCEO",
             EstadoSeguimiento: alignmentStatus,
+            FinalizadaMesActual: isCurrentMonthDate(ot.FechaAlineacionBalanceo),
             FechaInicioTrabajo: displayDate(ot.FechaInicioAlineacionBalanceo),
             FechaEntrega: displayDate(ot.FechaAlineacionBalanceo),
             TrabajoRealizado: sentenceText(ot.TrabajoAlineacionBalanceo),
@@ -1046,7 +1170,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
         current.asignadas += ot.EstadoSeguimiento === "finalizada" ? 0 : 1;
         current.realizando += ot.EstadoSeguimiento === "realizando" ? 1 : 0;
         current.pendientes += ot.EstadoSeguimiento === "pendiente" ? 1 : 0;
-        current.finalizadas += ot.EstadoSeguimiento === "finalizada" ? 1 : 0;
+        current.finalizadas += ot.EstadoSeguimiento === "finalizada" && ot.FinalizadaMesActual ? 1 : 0;
         if (ot.EstadoSeguimiento !== "finalizada") current.ots.push(ot);
         mecanicosMap.set(name, current);
       });
@@ -1693,6 +1817,14 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       return res.status(400).json({ ok: false, error: "TrabajoRealizado es obligatorio para finalizar la OT" });
     }
 
+    if (isFinalState && (cabecera.RequiereChequeoPreCompra || currentOt.RequiereChequeoPreCompra)) {
+      const report = cabecera.InformePreCompra || currentOt.InformePreCompra || {};
+
+      if (!String(report.conclusionCliente || "").trim()) {
+        return res.status(400).json({ ok: false, error: "Ingrese la conclusión para el cliente del informe pre compra" });
+      }
+    }
+
     const assignedMechanic = upperText(cabecera.MecanicoResponsable);
 
     const requiresAlignmentBalance = Boolean(cabecera.RequiereAlineacionBalanceo) || Boolean(currentOt.RequiereAlineacionBalanceo);
@@ -1702,6 +1834,9 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       MecanicoResponsable: assignedMechanic,
       RepuestosUsados: sentenceText(cabecera.RepuestosUsados),
       TrabajoRealizado: sentenceText(cabecera.TrabajoRealizado),
+      RequiereChequeoPreCompra: Boolean(cabecera.RequiereChequeoPreCompra) || Boolean(currentOt.RequiereChequeoPreCompra),
+      ObservacionPreCompra: sentenceText(cabecera.ObservacionPreCompra ?? currentOt.ObservacionPreCompra),
+      InformePreCompra: normalizePreCompraReport(cabecera.InformePreCompra || currentOt.InformePreCompra),
       FechaEntrega: upperText(cabecera.FechaEntrega),
       Estado: upperText(nextEstado),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()

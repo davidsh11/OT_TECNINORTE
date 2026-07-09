@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { writePreCompraPdfTab } from "../utils/pdf";
 
 function formatDate(value) {
   if (!value) return "";
@@ -109,6 +110,21 @@ export default function CierreOTView({ api }) {
     }
   };
 
+
+  const imprimirInformePreCompra = () => {
+    if (!selected?.RequiereChequeoPreCompra) return;
+
+    const pdfTab = window.open("", "_blank");
+    if (pdfTab) {
+      pdfTab.document.write("<p style='font-family: Arial, sans-serif'>Preparando informe pre compra...</p>");
+    }
+
+    writePreCompraPdfTab(pdfTab, {
+      otId: selected.ID,
+      fecha: formatDate(selected.FechaEntrega || selected.FechaRecepcion) || new Date().toLocaleString(),
+      cabecera: selected
+    });
+  };
   const pageSize = 5;
   const orderedOrdenes = useMemo(() => {
     return [...ordenes].sort((a, b) => Number(hasLaborPrice(a)) - Number(hasLaborPrice(b)));
@@ -292,6 +308,11 @@ export default function CierreOTView({ api }) {
                   ) : null}
                 </div>
                 <div className="workshop-actions cobranza-actions">
+                  {selected.RequiereChequeoPreCompra ? (
+                    <button className="secondary-button" type="button" onClick={imprimirInformePreCompra}>
+                      Generar informe pre compra
+                    </button>
+                  ) : null}
                   {selected.Cobrado ? (
                     <button className="paid-lock-button" type="button" disabled>
                       Cobrado

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { getOtMedia } from "../utils/localOtMedia";
-import { writePdfTab } from "../utils/pdf";
+import { writePdfTab, writePreCompraPdfTab } from "../utils/pdf";
 
 function formatDate(value) {
   if (!value) return "";
@@ -81,6 +81,21 @@ export default function BuscarOTView({ api }) {
     });
   };
 
+
+  const imprimirInformePreCompra = () => {
+    if (!selected?.RequiereChequeoPreCompra) return;
+
+    const pdfTab = window.open("", "_blank");
+    if (pdfTab) {
+      pdfTab.document.write("<p style='font-family: Arial, sans-serif'>Preparando informe pre compra...</p>");
+    }
+
+    writePreCompraPdfTab(pdfTab, {
+      otId: selected.ID,
+      fecha: formatDate(selected.FechaEntrega || selected.FechaRecepcion) || new Date().toLocaleString(),
+      cabecera: selected
+    });
+  };
   const totalPages = Math.max(Math.ceil(ordenes.length / PAGE_SIZE), 1);
   const visibleOrdenes = ordenes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -131,6 +146,7 @@ export default function BuscarOTView({ api }) {
               </span>
               <span>
                 <strong>{ot.Placa || "Sin placa"}</strong>
+                <small>{[ot.Marca, ot.Modelo].filter(Boolean).join(" ") || "Sin marca/modelo"}</small>
                 <small>{formatDate(ot.FechaRecepcion)}</small>
                 <small
                   className={`ot-status-pill ${
@@ -169,6 +185,11 @@ export default function BuscarOTView({ api }) {
                 </div>
                 <div className="ot-detail-actions">
                   <strong>{selected.Estado || "Recibido"}</strong>
+                  {selected.RequiereChequeoPreCompra ? (
+                    <button type="button" onClick={imprimirInformePreCompra}>
+                      Informe pre compra
+                    </button>
+                  ) : null}
                   <button type="button" onClick={imprimirOT}>
                     Imprimir OT
                   </button>
@@ -186,6 +207,8 @@ export default function BuscarOTView({ api }) {
                 <strong>
                   {[selected.Marca, selected.Modelo, selected.Color].filter(Boolean).join(" ") || "-"}
                 </strong>
+                <span>Año</span>
+                <strong>{selected.Anio || "-"}</strong>
                 <span>Placa</span>
                 <strong>{selected.Placa || "-"}</strong>
                 <span>Kilometraje</span>

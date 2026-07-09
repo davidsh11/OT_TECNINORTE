@@ -65,6 +65,15 @@ export default function App() {
       return;
     }
 
+    if (key === "RequiereChequeoPreCompra") {
+      setCabecera((current) => ({
+        ...current,
+        RequiereChequeoPreCompra: Boolean(value),
+        ObservacionPreCompra: Boolean(value) ? current.ObservacionPreCompra : "",
+        InformePreCompra: Boolean(value) ? current.InformePreCompra || {} : {}
+      }));
+      return;
+    }
     let nextValue = uppercaseValue(value);
 
     if (key === "Telefonos") {

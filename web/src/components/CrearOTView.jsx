@@ -59,6 +59,33 @@ export default function CrearOTView({
       <section className="panel">
         <div className="section-heading">
           <div>
+            <p className="eyebrow">Servicio especial</p>
+            <h2>Chequeo pre compra</h2>
+          </div>
+        </div>
+        <label className="company-payment-toggle">
+          <input
+            type="checkbox"
+            checked={Boolean(cabecera.RequiereChequeoPreCompra)}
+            onChange={(event) => onCabeceraChange("RequiereChequeoPreCompra", event.target.checked)}
+          />
+          <span>Esta OT requiere chequeo pre compra</span>
+        </label>
+        <label className="field">
+          <span>Observación para el chequeo pre compra</span>
+          <textarea
+            rows="4"
+            disabled={!cabecera.RequiereChequeoPreCompra}
+            placeholder="Indique qué debe revisar el mecánico o cualquier detalle pedido por el cliente"
+            value={cabecera.ObservacionPreCompra || ""}
+            onChange={(event) => onCabeceraChange("ObservacionPreCompra", event.target.value)}
+          />
+        </label>
+      </section>
+
+      <section className="panel">
+        <div className="section-heading">
+          <div>
             <p className="eyebrow">Servicios adicionales</p>
             <h2>Alineacion y balanceo</h2>
           </div>

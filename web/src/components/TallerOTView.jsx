@@ -7,6 +7,9 @@ const emptyTaller = {
   MecanicoResponsable: "",
   RepuestosUsados: "",
   TrabajoRealizado: "",
+  RequiereChequeoPreCompra: false,
+  ObservacionPreCompra: "",
+  InformePreCompra: {},
   TrabajoAlineacionBalanceo: "",
   FechaAlineacionBalanceo: "",
   RequiereAlineacionBalanceo: false,
@@ -28,6 +31,9 @@ function toTallerForm(ot) {
     MecanicoResponsable: ot?.MecanicoResponsable || "",
     RepuestosUsados: sentenceText(ot?.RepuestosUsados),
     TrabajoRealizado: sentenceText(ot?.TrabajoRealizado),
+    RequiereChequeoPreCompra: Boolean(ot?.RequiereChequeoPreCompra),
+    ObservacionPreCompra: sentenceText(ot?.ObservacionPreCompra),
+    InformePreCompra: ot?.InformePreCompra || {},
     TrabajoAlineacionBalanceo: sentenceText(ot?.TrabajoAlineacionBalanceo),
     FechaAlineacionBalanceo: ot?.FechaAlineacionBalanceo || "",
     RequiereAlineacionBalanceo: Boolean(ot?.RequiereAlineacionBalanceo),
@@ -288,6 +294,11 @@ export default function TallerOTView({ api, currentUser }) {
         alert("Ingrese la fecha y hora de entrega para finalizar la OT.");
         return;
       }
+
+      if (form.RequiereChequeoPreCompra && !String(form.InformePreCompra?.conclusionCliente || "").trim()) {
+        alert("Ingrese la conclusión para el cliente del informe pre compra.");
+        return;
+      }
     }
 
     const requestsAlignmentBalance = Boolean(form.RequiereAlineacionBalanceo);
@@ -332,10 +343,10 @@ export default function TallerOTView({ api, currentUser }) {
         setResultados((current) => current.filter((ot) => ot.ID !== selected.ID));
       } else if (!canAssign) {
         alert("Datos de taller guardados.");
-        const updatedOt = { ...selected, ...payload };
-        setSelected(updatedOt);
-        setForm((current) => ({ ...current, ...payload }));
-        setResultados((current) => current.map((ot) => (ot.ID === selected.ID ? { ...ot, ...payload } : ot)));
+        setSelected(null);
+        setDetalle([]);
+        setForm(emptyTaller);
+        setResultados((current) => current.filter((ot) => ot.ID !== selected.ID));
       } else {
         setSelected((current) => ({ ...current, ...payload }));
         setForm(payload);
