@@ -122,7 +122,7 @@ export default function ReportesOTView({ api }) {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Reportes</p>
-            <h2>KPIs de cobranza y mecanicos</h2>
+            <h2>KPIs de cobranza y mecánicos</h2>
           </div>
           <button type="button" onClick={cargarReportes} disabled={loading}>
             {loading ? "Cargando..." : "Actualizar"}
@@ -159,7 +159,7 @@ export default function ReportesOTView({ api }) {
             />
           </label>
           <label className="field">
-            <span>Año graficas</span>
+            <span>Año gráficas</span>
             <input
               type="number"
               min="2020"
@@ -213,7 +213,7 @@ export default function ReportesOTView({ api }) {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Grafica</p>
-            <h2>OT y monto generado por mecanico</h2>
+            <h2>OT y monto generado por mecánico</h2>
           </div>
         </div>
 
@@ -222,7 +222,7 @@ export default function ReportesOTView({ api }) {
             <p className="empty-state">No hay datos para graficar.</p>
           ) : (
             byMechanic.map((item) => {
-              const laborLabel = item.mecanico === "FERNANDOS" ? "Mano de obra + alineacion" : "Mano de obra";
+              const laborLabel = item.mecanico === "FERNANDOS" ? "Mano de obra + alineación" : "Mano de obra";
 
               return (
                 <article className="mechanic-bar" key={item.mecanico}>
@@ -332,7 +332,7 @@ export default function ReportesOTView({ api }) {
                 <strong>{ot.ID}</strong>
                 <span>{ot.Propietario || "Sin propietario"} / CL: {ot.CL || "-"}</span>
                 <span>{ot.Placa || "Sin placa"}</span>
-                <span>{ot.MecanicoResponsable || "Sin mecanico"}</span>
+                <span>{ot.MecanicoResponsable || "Sin mecánico"}</span>
                 <span className={`payment-status-badge ${ot.Cobrado ? "paid" : "pending"}`}>
                   {ot.Cobrado ? "Cobrado" : "Pendiente"}
                 </span>

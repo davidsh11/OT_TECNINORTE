@@ -16,11 +16,11 @@ const emptyForm = {
 };
 
 const clienteFields = [
-  ["CL", "Cedula / RUC"],
+  ["CL", "Cédula / RUC"],
   ["Propietario", "Propietario"],
-  ["Telefonos", "Telefonos"],
-  ["CorreoElectronico", "Correo electronico"],
-  ["Direccion", "Direccion"]
+  ["Telefonos", "Teléfonos"],
+  ["CorreoElectronico", "Correo electrónico"],
+  ["Direccion", "Dirección"]
 ];
 
 const vehiculoFields = [
@@ -29,7 +29,7 @@ const vehiculoFields = [
   ["Modelo", "Modelo"],
   ["Color", "Color"],
   ["MarcaRadio", "Marca radio"],
-  ["Anio", "Anio"]
+  ["Anio", "Año"]
 ];
 
 function uppercase(value) {
@@ -191,12 +191,12 @@ export default function DatosClientesView({ api }) {
     }
 
     if (form.Telefonos && !/^\d{10}$/.test(form.Telefonos)) {
-      alert("El numero de telefono debe tener 10 digitos numericos.");
+      alert("El número de teléfono debe tener 10 dígitos numéricos.");
       return;
     }
 
     if (form.CorreoElectronico && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.CorreoElectronico)) {
-      alert("Ingrese un correo electronico valido.");
+      alert("Ingrese un correo electrónico válido.");
       return;
     }
 
@@ -243,7 +243,7 @@ export default function DatosClientesView({ api }) {
         </div>
         <div className="client-data-tools">
           <label className="field">
-            <span>Cedula / RUC</span>
+            <span>Cédula / RUC</span>
             <input
               className="searchable-input"
               value={search.cl}
@@ -298,7 +298,7 @@ export default function DatosClientesView({ api }) {
           <div className="section-heading">
             <div>
               <p className="eyebrow">Vehiculo</p>
-              <h2>Datos del vehiculo</h2>
+              <h2>Datos del vehículo</h2>
             </div>
           </div>
           <div className="form-grid compact">
@@ -319,7 +319,7 @@ export default function DatosClientesView({ api }) {
       <div className="actions-bar">
         <span>
           {loaded
-            ? "Los cambios actualizan la base de clientes y vehiculos para futuras OT."
+            ? "Los cambios actualizan la base de clientes y vehículos para futuras OT."
             : "Puede buscar un cliente existente o llenar los datos para crear la ficha."}
         </span>
         <button className="primary-button" type="button" disabled={saving} onClick={guardarDatos}>

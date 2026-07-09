@@ -20,7 +20,7 @@ export default function DetalleForm({
       <div className="detail-entry">
         <div className="entry-row">
           <input
-            placeholder="Descripcion del trabajo"
+            placeholder="Descripción del trabajo"
             value={nuevoTrabajo}
             onChange={(event) => onNuevoTrabajoChange(event.target.value)}
             onKeyDown={(event) => event.key === "Enter" && onAgregarTrabajo()}
@@ -32,7 +32,7 @@ export default function DetalleForm({
 
         <div className="entry-row">
           <input
-            placeholder="Descripcion del repuesto"
+            placeholder="Descripción del repuesto"
             value={nuevoRepuesto.desc}
             onChange={(event) =>
               onNuevoRepuestoChange((current) => ({ ...current, desc: event.target.value }))

@@ -25,11 +25,11 @@ export const initialCabecera = {
 };
 
 export const clienteFields = [
-  ["CL", "Cedula / RUC"],
+  ["CL", "Cédula / RUC"],
   ["Propietario", "Propietario"],
-  ["Telefonos", "Telefonos"],
-  ["CorreoElectronico", "Correo electronico"],
-  ["Direccion", "Direccion"]
+  ["Telefonos", "Teléfonos"],
+  ["CorreoElectronico", "Correo electrónico"],
+  ["Direccion", "Dirección"]
 ];
 
 export const vehiculoFields = [
@@ -38,6 +38,6 @@ export const vehiculoFields = [
   ["Modelo", "Modelo"],
   ["Color", "Color"],
   ["MarcaRadio", "Marca radio"],
-  ["Anio", "Anio"],
+  ["Anio", "Año"],
   ["Kilometraje", "Kilometraje"]
 ];

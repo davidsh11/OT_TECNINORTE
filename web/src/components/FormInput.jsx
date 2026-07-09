@@ -15,7 +15,7 @@ export default function FormInput({ field, value, onChange }) {
         required={["Propietario", "Telefonos", "Placa"].includes(key)}
         maxLength={key === "Telefonos" ? 10 : undefined}
         pattern={key === "Telefonos" ? "\\d{10}" : undefined}
-        title={key === "Telefonos" ? "Ingrese 10 digitos numericos." : undefined}
+        title={key === "Telefonos" ? "Ingrese 10 dígitos numéricos." : undefined}
         value={value}
         onChange={(event) => onChange(key, event.target.value)}
       />

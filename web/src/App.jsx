@@ -15,7 +15,7 @@ import SalidaOTView from "./components/SalidaOTView";
 import SeguimientoMecanicosView from "./components/SeguimientoMecanicosView";
 import TallerOTView from "./components/TallerOTView";
 import UsuariosAdminView from "./components/UsuariosAdminView";
-import { initialCabecera } from "./constants/formFields";
+import { clienteFields, initialCabecera, vehiculoFields } from "./constants/formFields";
 import { users } from "./constants/users";
 import { saveOtMedia } from "./utils/localOtMedia";
 import { fileToPdfDataUrl, signatureToDataUrl, writePdfTab } from "./utils/pdf";
@@ -94,7 +94,7 @@ export default function App() {
     const cl = normalizeIdentification(cabecera.CL);
 
     if (!cl) {
-      alert("Ingrese la cedula o RUC para buscar los datos del cliente.");
+      alert("Ingrese la cédula o RUC para buscar los datos del cliente.");
       return;
     }
 
@@ -145,7 +145,7 @@ export default function App() {
     );
 
     if (!orden) {
-      alert("No se encontraron datos guardados para esa cedula o RUC.");
+      alert("No se encontraron datos guardados para esa cédula o RUC.");
       return;
     }
 
@@ -170,7 +170,7 @@ export default function App() {
     const placa = cabecera.Placa.trim();
 
     if (!placa) {
-      alert("Ingrese la placa para buscar los datos del cliente y vehiculo.");
+      alert("Ingrese la placa para buscar los datos del cliente y vehículo.");
       return;
     }
 
@@ -316,30 +316,27 @@ export default function App() {
     } catch (pdfError) {
       if (pdfTab) pdfTab.close();
       console.error("No se pudo generar el PDF:", pdfError);
-      alert("La OT se guardo, pero no se pudo generar el PDF con las firmas/evidencias.");
+      alert("La OT se guardó, pero no se pudo generar el PDF con las firmas/evidencias.");
     }
   };
 
   const guardarOT = async () => {
+    const requiredFields = [...clienteFields, ...vehiculoFields];
+    const missingField = requiredFields.find(([key]) => !String(cabecera[key] || "").trim());
     const telefonoValido = /^\d{10}$/.test(cabecera.Telefonos || "");
 
-    if (!cabecera.Propietario.trim()) {
-      alert("Ingrese el propietario del vehiculo.");
+    if (missingField) {
+      alert(`Complete todos los datos del cliente y vehículo antes de generar la OT. Falta: ${missingField[1]}.`);
       return;
     }
 
     if (!telefonoValido) {
-      alert("El numero de telefono debe tener 10 digitos numericos.");
+      alert("El número de teléfono debe tener 10 dígitos numéricos.");
       return;
     }
 
-    if (cabecera.CorreoElectronico && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cabecera.CorreoElectronico)) {
-      alert("Ingrese un correo electronico valido.");
-      return;
-    }
-
-    if (!cabecera.Placa.trim()) {
-      alert("La placa es obligatoria para guardar la OT.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cabecera.CorreoElectronico)) {
+      alert("Ingrese un correo electrónico válido.");
       return;
     }
 
@@ -420,9 +417,9 @@ export default function App() {
     seguimiento: ["Control de taller", "Seguimiento"],
     cierre: ["Cierre", "Cierre OT"],
     cobranza: ["Cobranza", "Cobranza"],
-    salida: ["Recepcion", "Salida de taller"],
+    salida: ["Recepción", "Salida de taller"],
     reportes: ["Reportes", "KPIs"],
-    usuarios: ["Administracion", "Usuarios"]
+    usuarios: ["Administración", "Usuarios"]
   }[safeActiveView];
 
   return (
@@ -437,7 +434,7 @@ export default function App() {
             <strong>{currentUser.name}</strong>
           </div>
           <button className="logout-button" type="button" onClick={logout}>
-            Cerrar sesion
+            Cerrar sesión
           </button>
         </div>
       </header>

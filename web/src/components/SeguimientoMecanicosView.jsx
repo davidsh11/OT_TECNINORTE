@@ -67,7 +67,7 @@ export default function SeguimientoMecanicosView({ api }) {
       });
     } catch (requestError) {
       console.error(requestError);
-      setError("No se pudo cargar el seguimiento de mecanicos.");
+      setError("No se pudo cargar el seguimiento de mecánicos.");
     } finally {
       setLoading(false);
     }
@@ -116,7 +116,7 @@ export default function SeguimientoMecanicosView({ api }) {
       <div className="section-heading tracking-heading">
         <div>
           <p className="eyebrow">Control de taller</p>
-          <h2>Seguimiento de mecanicos</h2>
+          <h2>Seguimiento de mecánicos</h2>
         </div>
         <button type="button" onClick={cargarSeguimiento} disabled={loading}>
           {loading ? "Actualizando..." : "Actualizar"}
@@ -134,7 +134,7 @@ export default function SeguimientoMecanicosView({ api }) {
         <article className="report-kpi pending">
           <span>Sin asignar</span>
           <strong>{data.resumen.sinAsignar ?? 0}</strong>
-          <small>Pendientes de asignacion</small>
+          <small>Pendientes de asignación</small>
         </article>
         <article className="report-kpi">
           <span>Realizando</span>
@@ -151,10 +151,10 @@ export default function SeguimientoMecanicosView({ api }) {
       <section className="exit-chart-panel">
         <div className="exit-chart-copy">
           <p className="eyebrow">Salida de taller</p>
-          <h3>{salidaChart.approvedCount} vehiculos listos para salida</h3>
+          <h3>{salidaChart.approvedCount} vehículos listos para salida</h3>
           <span>{salidaChart.approvedPercent}% del flujo visible ya esta cobrado</span>
         </div>
-        <div className="exit-chart-bars" aria-label="Grafica de vehiculos con salida autorizada">
+        <div className="exit-chart-bars" aria-label="Gráfica de vehículos con salida autorizada">
           <div>
             <span>Listos para salida</span>
             <strong>{salidaChart.approvedCount}</strong>
@@ -175,7 +175,7 @@ export default function SeguimientoMecanicosView({ api }) {
             </article>
           ))}
           {!loading && (data.pendientesSalida || []).length === 0 ? (
-            <p className="empty-state">No hay vehiculos listos para salida.</p>
+            <p className="empty-state">No hay vehículos listos para salida.</p>
           ) : null}
         </div>
       </section>
@@ -207,12 +207,12 @@ export default function SeguimientoMecanicosView({ api }) {
 
       <div className="tracking-tools">
         <input
-          placeholder="Buscar OT, placa, cliente o mecanico"
+          placeholder="Buscar OT, placa, cliente o mecánico"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
         <select value={mechanicFilter} onChange={(event) => setMechanicFilter(event.target.value)}>
-          <option value="todos">Todos los mecanicos</option>
+          <option value="todos">Todos los mecánicos</option>
           {data.mecanicos.map((mechanic) => (
             <option value={mechanic.mecanico} key={mechanic.mecanico}>
               {mechanic.mecanico}
@@ -247,7 +247,7 @@ export default function SeguimientoMecanicosView({ api }) {
             </div>
             <div>
               <span>{ot.Placa || "Sin placa"}</span>
-              <small>{[ot.Marca, ot.Modelo].filter(Boolean).join(" ") || "Sin vehiculo"}</small>
+              <small>{[ot.Marca, ot.Modelo].filter(Boolean).join(" ") || "Sin vehículo"}</small>
             </div>
             <div>
               <span>{ot.MecanicoResponsable || "Sin asignar"}</span>

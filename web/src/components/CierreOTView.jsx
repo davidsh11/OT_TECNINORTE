@@ -205,7 +205,7 @@ export default function CierreOTView({ api }) {
               <div className="read-grid">
                 <span>CL</span>
                 <strong>{selected.CL || "-"}</strong>
-                <span>Telefonos</span>
+                <span>Teléfonos</span>
                 <strong>{selected.Telefonos || "-"}</strong>
                 <span>Vehiculo</span>
                 <strong>
@@ -234,9 +234,9 @@ export default function CierreOTView({ api }) {
 
                             {selected.RequiereAlineacionBalanceo ? (
                 <>
-                  <h4>Detalle de alineacion y balanceo</h4>
+                  <h4>Detalle de alineación y balanceo</h4>
                   <p className="notes-preview">
-                    {selected.TrabajoAlineacionBalanceo || "Sin detalle de alineacion y balanceo."}
+                    {selected.TrabajoAlineacionBalanceo || "Sin detalle de alineación y balanceo."}
                   </p>
                 </>
               ) : null}

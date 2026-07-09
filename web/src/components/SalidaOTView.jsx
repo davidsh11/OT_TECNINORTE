@@ -63,12 +63,12 @@ export default function SalidaOTView({ api }) {
       setSaving(true);
       setError("");
       await axios.patch(`${api}/api/ot/${selected.ID}/salida`);
-      alert("Salida del vehiculo autorizada.");
+      alert("Salida del vehículo autorizada.");
       setSelected(null);
       await cargarCobradas();
     } catch (requestError) {
       console.error(requestError);
-      setError("No se pudo autorizar la salida del vehiculo.");
+      setError("No se pudo autorizar la salida del vehículo.");
     } finally {
       setSaving(false);
     }
@@ -146,7 +146,7 @@ export default function SalidaOTView({ api }) {
               <div className="read-grid">
                 <span>CL</span>
                 <strong>{selected.CL || "-"}</strong>
-                <span>Telefonos</span>
+                <span>Teléfonos</span>
                 <strong>{selected.Telefonos || "-"}</strong>
                 <span>Vehiculo</span>
                 <strong>
@@ -155,7 +155,7 @@ export default function SalidaOTView({ api }) {
                 <span>Placa</span>
                 <strong>{selected.Placa || "-"}</strong>
                 <span>Mecanico</span>
-                <strong>{selected.MecanicoResponsable || "Sin mecanico asignado"}</strong>
+                <strong>{selected.MecanicoResponsable || "Sin mecánico asignado"}</strong>
                 <span>Estado pago</span>
                 <strong>{paymentStatusLabel(selected).toUpperCase()}</strong>
                 {selected.PagoParcialPendiente ? (
@@ -181,15 +181,15 @@ export default function SalidaOTView({ api }) {
 
                             {selected.RequiereAlineacionBalanceo ? (
                 <>
-                  <h4>Detalle de alineacion y balanceo</h4>
+                  <h4>Detalle de alineación y balanceo</h4>
                   <p className="notes-preview">
-                    {selected.TrabajoAlineacionBalanceo || "Sin detalle de alineacion y balanceo."}
+                    {selected.TrabajoAlineacionBalanceo || "Sin detalle de alineación y balanceo."}
                   </p>
                 </>
               ) : null}
 
               <div className="workshop-actions">
-                <span>Confirme la salida solo cuando el vehiculo se entregue al cliente.</span>
+                <span>Confirme la salida solo cuando el vehículo se entregue al cliente.</span>
                 <button className="primary-button" type="button" onClick={autorizarSalida} disabled={saving}>
                   {saving ? "Guardando..." : "Autorizar salida"}
                 </button>

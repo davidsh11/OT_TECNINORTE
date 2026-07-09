@@ -284,7 +284,7 @@ function trackingOtPayload(ot) {
 const MONTH_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 const DEFAULT_SYSTEM_USERS = [
-  { username: "recepcion", password: "1234", role: "recepcion", name: "Recepcion", allowedViews: ["inicio", "crear", "buscar", "historial", "seguimiento", "salida"] },
+  { username: "recepcion", password: "1234", role: "recepcion", name: "Recepción", allowedViews: ["inicio", "crear", "buscar", "historial", "seguimiento", "salida"] },
   { username: "cobranza", password: "1234", role: "cobranza", name: "Cobranza", allowedViews: ["inicio", "datosClientes", "buscar", "historial", "seguimiento", "cobranza"] },
   { username: "jefe", password: "1234", role: "jefe_taller", name: "Jefe de taller", allowedViews: ["inicio", "buscar", "historial", "taller", "seguimiento", "cierre", "reportes"], canAssignOt: true },
   { username: "angelf", password: "1234", role: "mecanico", name: "ANGELF", mechanicId: "ANGELF", allowedViews: ["inicio", "taller"], canAssignOt: false },
@@ -493,19 +493,32 @@ app.post("/api/ot", async (req, res) => {
       detalle = []
     } = req.body;
 
-    if (!String(cabecera?.Propietario || "").trim()) {
-      return res.status(400).json({ ok: false, error: "Propietario es obligatorio" });
+    const requiredFields = [
+      ["CL", "Cédula / RUC"],
+      ["Propietario", "Propietario"],
+      ["Telefonos", "Teléfonos"],
+      ["CorreoElectronico", "Correo electrónico"],
+      ["Direccion", "Dirección"],
+      ["Placa", "Placa"],
+      ["Marca", "Marca"],
+      ["Modelo", "Modelo"],
+      ["Color", "Color"],
+      ["MarcaRadio", "Marca radio"],
+      ["Anio", "Año"],
+      ["Kilometraje", "Kilometraje"]
+    ];
+    const missingField = requiredFields.find(([key]) => !String(cabecera?.[key] || "").trim());
+
+    if (missingField) {
+      return res.status(400).json({ ok: false, error: `Complete todos los datos del cliente y vehículo. Falta: ${missingField[1]}` });
     }
 
     if (!/^\d{10}$/.test(String(cabecera?.Telefonos || ""))) {
-      return res.status(400).json({ ok: false, error: "Telefonos debe tener 10 digitos numericos" });
+      return res.status(400).json({ ok: false, error: "Teléfonos debe tener 10 dígitos numéricos" });
     }
 
-    if (
-      cabecera?.CorreoElectronico &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(cabecera.CorreoElectronico))
-    ) {
-      return res.status(400).json({ ok: false, error: "CorreoElectronico no es valido" });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(cabecera.CorreoElectronico))) {
+      return res.status(400).json({ ok: false, error: "Correo electrónico no es válido" });
     }
 
     const placa = normalizePlate(cabecera?.Placa);
@@ -576,7 +589,7 @@ app.get("/api/clientes/identificacion/:cl", async (req, res) => {
     const cl = normalizeIdentification(req.params.cl);
 
     if (!cl) {
-      return res.status(400).json({ ok: false, error: "Cedula/RUC es obligatorio" });
+      return res.status(400).json({ ok: false, error: "Cédula/RUC es obligatorio" });
     }
 
     const { db } = getFirebase();
@@ -723,7 +736,7 @@ app.get("/api/clientes-datos", async (req, res) => {
     const placa = normalizePlate(req.query.placa);
 
     if (!cl && !placa) {
-      return res.status(400).json({ ok: false, error: "Ingrese cedula/RUC o placa" });
+      return res.status(400).json({ ok: false, error: "Ingrese cédula/RUC o placa" });
     }
 
     const { db } = getFirebase();
@@ -810,7 +823,7 @@ app.patch("/api/clientes-datos", async (req, res) => {
     const originalPlaca = normalizePlate(original.placa);
 
     if (!cl) {
-      return res.status(400).json({ ok: false, error: "Cedula/RUC es obligatoria" });
+      return res.status(400).json({ ok: false, error: "Cédula/RUC es obligatoria" });
     }
 
     if (!placa) {
@@ -818,14 +831,14 @@ app.patch("/api/clientes-datos", async (req, res) => {
     }
 
     if (registro.Telefonos && !/^\d{10}$/.test(String(registro.Telefonos))) {
-      return res.status(400).json({ ok: false, error: "Telefonos debe tener 10 digitos numericos" });
+      return res.status(400).json({ ok: false, error: "Teléfonos debe tener 10 dígitos numéricos" });
     }
 
     if (
       registro.CorreoElectronico &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(registro.CorreoElectronico))
     ) {
-      return res.status(400).json({ ok: false, error: "CorreoElectronico no es valido" });
+      return res.status(400).json({ ok: false, error: "Correo electrónico no es válido" });
     }
 
     const { db } = getFirebase();
@@ -981,19 +994,34 @@ app.get("/api/ot/seguimiento", async (req, res) => {
       ...doc.data()
     }));
     const ordenes = baseOrdenes.flatMap((ot) => {
-      const rows = [trackingOtPayload(ot)];
+      const baseRow = trackingOtPayload(ot);
+      const rows = [baseRow];
 
       if (ot.RequiereAlineacionBalanceo) {
-        rows.push({
-          ...trackingOtPayload(ot),
-          MecanicoResponsable: "FERNANDOS",
-          AreaTrabajo: "ALINEACION Y BALANCEO",
-          EstadoSeguimiento: alignmentTrackingStatus(ot),
-          FechaInicioTrabajo: displayDate(ot.FechaInicioAlineacionBalanceo),
-          FechaEntrega: displayDate(ot.FechaAlineacionBalanceo),
-          TrabajoRealizado: sentenceText(ot.TrabajoAlineacionBalanceo),
-          ObservacionAlineacionBalanceo: sentenceText(ot.ObservacionAlineacionBalanceo)
-        });
+        const alignmentMechanic = upperText(ot.MecanicoAlineacionBalanceo || "FERNANDOS");
+        const primaryMechanic = upperText(baseRow.MecanicoResponsable);
+        const alignmentStatus = alignmentTrackingStatus(ot);
+
+        if (alignmentMechanic && alignmentMechanic === primaryMechanic) {
+          baseRow.AreaTrabajo = "MECANICA + ALINEACION Y BALANCEO";
+          baseRow.ObservacionAlineacionBalanceo = sentenceText(ot.ObservacionAlineacionBalanceo);
+          if (baseRow.EstadoSeguimiento === "finalizada" && alignmentStatus !== "finalizada") {
+            baseRow.EstadoSeguimiento = alignmentStatus;
+          } else if (alignmentStatus === "realizando") {
+            baseRow.EstadoSeguimiento = "realizando";
+          }
+        } else {
+          rows.push({
+            ...trackingOtPayload(ot),
+            MecanicoResponsable: alignmentMechanic || "FERNANDOS",
+            AreaTrabajo: "ALINEACION Y BALANCEO",
+            EstadoSeguimiento: alignmentStatus,
+            FechaInicioTrabajo: displayDate(ot.FechaInicioAlineacionBalanceo),
+            FechaEntrega: displayDate(ot.FechaAlineacionBalanceo),
+            TrabajoRealizado: sentenceText(ot.TrabajoAlineacionBalanceo),
+            ObservacionAlineacionBalanceo: sentenceText(ot.ObservacionAlineacionBalanceo)
+          });
+        }
       }
 
       return rows;
@@ -1294,7 +1322,7 @@ app.get("/api/reports/finance", async (req, res) => {
         const addMechanicAmount = (mechanicName, amount, parts = 0, labor = amount) => {
           if (amount <= 0) return;
 
-          const name = mechanicName || "Sin mecanico";
+          const name = mechanicName || "Sin mecánico";
           if (!acc.byMechanic[name]) {
             acc.byMechanic[name] = {
               mecanico: name,
@@ -1506,7 +1534,7 @@ app.patch("/api/ot/:id/salida", async (req, res) => {
     if (!canExit) {
       return res.status(409).json({
         ok: false,
-        error: "La salida solo se puede autorizar si la OT esta cobrada o tiene pago pendiente autorizado"
+        error: "La salida solo se puede autorizar si la OT está cobrada o tiene pago pendiente autorizado"
       });
     }
 
@@ -1542,15 +1570,15 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
     const assignedMechanic = isAlignmentArea ? upperText(currentOt.MecanicoAlineacionBalanceo || "FERNANDOS") : upperText(currentOt.MecanicoResponsable);
 
     if (!assignedMechanic) {
-      return res.status(400).json({ ok: false, error: "La OT no tiene mecanico asignado" });
+      return res.status(400).json({ ok: false, error: "La OT no tiene mecánico asignado" });
     }
 
     if (mecanico && mecanico !== assignedMechanic) {
-      return res.status(403).json({ ok: false, error: "La OT esta asignada a otro mecanico" });
+      return res.status(403).json({ ok: false, error: "La OT está asignada a otro mecánico" });
     }
 
     if (currentOt.Cobrado || currentOt.SalidaAutorizada || (!isAlignmentArea && isCompleted(currentOt))) {
-      return res.status(409).json({ ok: false, error: "La OT ya no esta disponible para iniciar trabajo" });
+      return res.status(409).json({ ok: false, error: "La OT ya no está disponible para iniciar trabajo" });
     }
 
     if (isAlignmentArea) {
@@ -1615,13 +1643,30 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       });
     }
 
+    const assignmentOnly = Boolean(req.body?.assignmentOnly);
+
+    if (assignmentOnly) {
+      const assignedMechanic = upperText(cabecera.MecanicoResponsable);
+
+      if (!assignedMechanic) {
+        return res.status(400).json({ ok: false, error: "Seleccione el mecanico responsable" });
+      }
+
+      await otRef.update({
+        MecanicoResponsable: assignedMechanic,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return res.json({ ok: true, otId: id, MecanicoResponsable: assignedMechanic });
+    }
+
     if (isAlignmentArea) {
       if (!hasAlignmentBalanceWork(currentOt)) {
-        return res.status(400).json({ ok: false, error: "La OT no tiene alineacion y balanceo asignado" });
+        return res.status(400).json({ ok: false, error: "La OT no tiene alineación y balanceo asignado" });
       }
 
       if (!String(cabecera.TrabajoAlineacionBalanceo || "").trim()) {
-        return res.status(400).json({ ok: false, error: "Ingrese el trabajo realizado en alineacion y balanceo" });
+        return res.status(400).json({ ok: false, error: "Ingrese el trabajo realizado en alineación y balanceo" });
       }
 
       const finishDate = cabecera.FechaAlineacionBalanceo || new Date().toISOString();
@@ -1650,14 +1695,32 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
 
     const assignedMechanic = upperText(cabecera.MecanicoResponsable);
 
-    await otRef.update({
+    const requiresAlignmentBalance = Boolean(cabecera.RequiereAlineacionBalanceo) || Boolean(currentOt.RequiereAlineacionBalanceo);
+    const alignmentWork = sentenceText(cabecera.TrabajoAlineacionBalanceo);
+    const alignmentObservation = sentenceText(cabecera.ObservacionAlineacionBalanceo ?? currentOt.ObservacionAlineacionBalanceo);
+    const updatePayload = {
       MecanicoResponsable: assignedMechanic,
       RepuestosUsados: sentenceText(cabecera.RepuestosUsados),
       TrabajoRealizado: sentenceText(cabecera.TrabajoRealizado),
       FechaEntrega: upperText(cabecera.FechaEntrega),
       Estado: upperText(nextEstado),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    };
+
+    if (requiresAlignmentBalance) {
+      updatePayload.RequiereAlineacionBalanceo = true;
+      updatePayload.MecanicoAlineacionBalanceo = upperText(currentOt.MecanicoAlineacionBalanceo || "FERNANDOS");
+      updatePayload.EstadoAlineacionBalanceo = upperText(currentOt.EstadoAlineacionBalanceo || "PENDIENTE");
+      updatePayload.ObservacionAlineacionBalanceo = alignmentObservation;
+
+      if (alignmentWork) {
+        updatePayload.TrabajoAlineacionBalanceo = alignmentWork;
+        updatePayload.FechaAlineacionBalanceo = upperText(cabecera.FechaAlineacionBalanceo || currentOt.FechaAlineacionBalanceo || new Date().toISOString());
+        updatePayload.EstadoAlineacionBalanceo = "FINALIZADO";
+      }
+    }
+
+    await otRef.update(updatePayload);
 
     res.json({ ok: true, otId: id });
   } catch (e) {

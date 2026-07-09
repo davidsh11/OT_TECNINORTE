@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 
 const actions = [
@@ -13,7 +13,7 @@ const actions = [
   {
     view: "taller",
     title: "Taller",
-    description: "Actualizar mecanico, repuestos, trabajo realizado y entrega.",
+    description: "Actualizar mecánico, repuestos, trabajo realizado y entrega.",
     icon: "wrench",
     tone: "green",
     handler: "onOpenTaller"
@@ -21,7 +21,7 @@ const actions = [
   {
     view: "seguimiento",
     title: "Seguimiento",
-    description: "Ver carga, avance y pendientes por mecanico.",
+    description: "Ver carga, avance y pendientes por mecánico.",
     icon: "check",
     tone: "blue",
     handler: "onOpenSeguimiento"
@@ -45,7 +45,7 @@ const actions = [
   {
     view: "salida",
     title: "Salida de taller",
-    description: "Autorizar la salida del vehiculo cuando la OT ya esta cobrada.",
+    description: "Autorizar la salida del vehículo cuando la OT ya está cobrada.",
     icon: "wrench",
     tone: "red",
     handler: "onOpenSalida"
@@ -61,7 +61,7 @@ const actions = [
   {
     view: "datosClientes",
     title: "Datos clientes",
-    description: "Buscar y actualizar datos de contacto y vehiculo.",
+    description: "Buscar y actualizar datos de contacto y vehículo.",
     icon: "userEdit",
     tone: "green",
     handler: "onOpenDatosClientes"
@@ -77,7 +77,7 @@ const actions = [
   {
     view: "reportes",
     title: "Reportes",
-    description: "Ver KPIs de cobros, pendientes y rendimiento por mecanico.",
+    description: "Ver KPIs de cobros, pendientes y rendimiento por mecánico.",
     icon: "file",
     tone: "blue",
     handler: "onOpenReportes"

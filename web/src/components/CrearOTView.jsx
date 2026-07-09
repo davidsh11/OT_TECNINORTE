@@ -69,14 +69,14 @@ export default function CrearOTView({
             checked={Boolean(cabecera.RequiereAlineacionBalanceo)}
             onChange={(event) => onCabeceraChange("RequiereAlineacionBalanceo", event.target.checked)}
           />
-          <span>Esta OT requiere alineacion y balanceo</span>
+          <span>Esta OT requiere alineación y balanceo</span>
         </label>
         <label className="field">
-          <span>Trabajo solicitado para alineacion y balanceo</span>
+          <span>Trabajo solicitado para alineación y balanceo</span>
           <textarea
             rows="4"
             disabled={!cabecera.RequiereAlineacionBalanceo}
-            placeholder="Indique que se debe realizar en el area de alineacion y balanceo"
+            placeholder="Indique qué se debe realizar en el área de alineación y balanceo"
             value={cabecera.ObservacionAlineacionBalanceo || ""}
             onChange={(event) => onCabeceraChange("ObservacionAlineacionBalanceo", event.target.value)}
           />

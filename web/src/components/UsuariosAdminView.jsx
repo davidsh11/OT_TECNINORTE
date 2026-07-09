@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 
 function roleLabel(role) {
@@ -6,7 +6,7 @@ function roleLabel(role) {
   if (role === "jefe_taller") return "Jefe taller";
   if (role === "recepcion") return "Recepcion";
   if (role === "cobranza") return "Cobranza";
-  if (role === "mecanico") return "Mecanico";
+  if (role === "mecanico") return "Mecánico";
   return role || "-";
 }
 
@@ -80,7 +80,7 @@ export default function UsuariosAdminView({ api }) {
     <section className="panel users-admin-panel">
       <div className="section-heading tracking-heading">
         <div>
-          <p className="eyebrow">Administracion</p>
+          <p className="eyebrow">Administración</p>
           <h2>Usuarios del sistema</h2>
         </div>
         <button type="button" onClick={cargarUsuarios} disabled={loading}>

@@ -324,7 +324,7 @@ export default function HistorialOTView({ api }) {
               </tr>`
           )
           .join("")
-      : `<tr><td colspan="3">SIN VEHICULOS IDENTIFICADOS.</td></tr>`;
+      : `<tr><td colspan="3">SIN VEHÍCULOS IDENTIFICADOS.</td></tr>`;
     const historyRows = historial
       .map((item) => {
         const trabajos = item.TrabajoRealizado || "";
@@ -577,15 +577,15 @@ export default function HistorialOTView({ api }) {
               <p class="muted">Historial general de trabajos realizados</p>
               <h1>${escapeHtml(cliente)}</h1>
               <div class="summary">
-                <div class="box"><span>Cedula/RUC</span><strong>${escapeHtml(cl)}</strong></div>
+                <div class="box"><span>Cédula/RUC</span><strong>${escapeHtml(cl)}</strong></div>
                 <div class="box"><span>Ordenes</span><strong>${escapeHtml(historial.length)}</strong></div>
-                <div class="box"><span>Vehiculos</span><strong>${escapeHtml(vehiculos.length || "-")}</strong></div>
+                <div class="box"><span>Vehículos</span><strong>${escapeHtml(vehiculos.length || "-")}</strong></div>
                 <div class="box"><span>Periodo</span><strong>${escapeHtml(periodo || "COMPLETO")}</strong></div>
               </div>
             </header>
 
             <section>
-              <h2>Vehiculos encontrados</h2>
+              <h2>Vehículos encontrados</h2>
               <table>
                 <thead>
                   <tr><th>Placa</th><th>Vehiculo</th><th>Color</th></tr>
@@ -618,13 +618,13 @@ export default function HistorialOTView({ api }) {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Historial</p>
-            <h2>Trabajos por cliente y vehiculo</h2>
+            <h2>Trabajos por cliente y vehículo</h2>
           </div>
         </div>
 
         <div className="history-filters">
           <label className="field">
-            <span>Cedula / RUC</span>
+            <span>Cédula / RUC</span>
             <input
               className="searchable-input"
               value={filters.cl}
@@ -669,7 +669,7 @@ export default function HistorialOTView({ api }) {
             <article className="history-vehicle" key={vehiculo.Placa}>
               <strong>{vehiculo.Placa}</strong>
               <span>
-                {[vehiculo.Marca, vehiculo.Modelo, vehiculo.Color].filter(Boolean).join(" / ") || "VEHICULO"}
+                {[vehiculo.Marca, vehiculo.Modelo, vehiculo.Color].filter(Boolean).join(" / ") || "VEHÍCULO"}
               </span>
             </article>
           ))}
@@ -708,7 +708,7 @@ export default function HistorialOTView({ api }) {
             <div className="history-meta">
               <span>Cliente</span>
               <strong>{item.Propietario || "SIN CLIENTE"}</strong>
-              <span>Cedula/RUC</span>
+              <span>Cédula/RUC</span>
               <strong>{item.CL || "SIN DATO"}</strong>
               <span>Vehiculo</span>
               <strong>{[item.Marca, item.Modelo, item.Color].filter(Boolean).join(" / ") || "SIN DATO"}</strong>

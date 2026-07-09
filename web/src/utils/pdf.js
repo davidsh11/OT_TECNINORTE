@@ -118,10 +118,10 @@ export function writePdfTab(tab, data) {
     .join("");
   const logoMarkup = getTecniNorteLogoSvg("pdf-logo");
   const serviceConditions = [
-    "Autorizo realizar el trabajo de reparacion del vehiculo de las caracteristicas detalladas anteriormente. Si al efectuar el trabajo solicitado en esta orden se encontrasen trabajos adicionales que hacer, autorizo a Talleres TecniNorte para ejecutarlos, cambiando los repuestos que sean necesarios.",
-    "El valor correspondiente a la reparacion, incluyendo repuestos y suministros, me comprometo a cancelar contra presentacion de la factura.",
+    "Autorizo realizar el trabajo de reparación del vehículo de las características detalladas anteriormente. Si al efectuar el trabajo solicitado en esta orden se encontrasen trabajos adicionales que hacer, autorizo a Talleres TecniNorte para ejecutarlos, cambiando los repuestos que sean necesarios.",
+    "El valor correspondiente a la reparación, incluyendo repuestos y suministros, me comprometo a cancelar contra presentación de la factura.",
     "Pasadas las 24 horas de estar listo el auto se cobrara garaje.",
-    "Talleres TecniNorte no se hace responsable por los objetos dejados en el vehiculo, sin haber sido declarados y verificados por el supervisor.",
+    "Talleres TecniNorte no se hace responsable por los objetos dejados en el vehículo, sin haber sido declarados y verificados por el supervisor.",
     "Si en 24 horas no autoriza que se realice el trabajo se cobrara garaje."
   ];
 
@@ -383,9 +383,9 @@ export function writePdfTab(tab, data) {
           ${
             data.cabecera.RequiereAlineacionBalanceo || data.cabecera.ObservacionAlineacionBalanceo
               ? `<section>
-                  <h2>Trabajo solicitado para alineacion y balanceo</h2>
+                  <h2>Trabajo solicitado para alineación y balanceo</h2>
                   <div class="notes">${escapeHtml(
-                    data.cabecera.ObservacionAlineacionBalanceo || "Sin observacion registrada para alineacion y balanceo."
+                    data.cabecera.ObservacionAlineacionBalanceo || "Sin observación registrada para alineación y balanceo."
                   )}</div>
                 </section>`
               : ""
@@ -407,9 +407,9 @@ export function writePdfTab(tab, data) {
                   )}</div>
                   ${
                     data.cabecera.RequiereAlineacionBalanceo || data.cabecera.TrabajoAlineacionBalanceo
-                      ? `<h2>Detalle de alineacion y balanceo</h2>
+                      ? `<h2>Detalle de alineación y balanceo</h2>
                         <div class="notes">${escapeHtml(
-                          data.cabecera.TrabajoAlineacionBalanceo || "Sin detalle de alineacion y balanceo."
+                          data.cabecera.TrabajoAlineacionBalanceo || "Sin detalle de alineación y balanceo."
                         )}</div>`
                       : ""
                   }
@@ -421,7 +421,7 @@ export function writePdfTab(tab, data) {
             <h2>Trabajos y repuestos</h2>
             <table class="detalle">
               <thead>
-                <tr><th>Tipo</th><th>Descripcion</th><th>Cantidad</th></tr>
+                <tr><th>Tipo</th><th>Descripción</th><th>Cantidad</th></tr>
               </thead>
               <tbody>${detalleRows}</tbody>
             </table>
