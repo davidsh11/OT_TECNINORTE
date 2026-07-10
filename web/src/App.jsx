@@ -65,6 +65,15 @@ export default function App() {
       return;
     }
 
+    if (key === "RequiereCambioAceite") {
+      setCabecera((current) => ({
+        ...current,
+        RequiereCambioAceite: Boolean(value),
+        MecanicoCambioAceite: Boolean(value) ? "JOSELOS" : "",
+        AceiteSolicitado: Boolean(value) ? current.AceiteSolicitado : ""
+      }));
+      return;
+    }
     if (key === "RequiereChequeoPreCompra") {
       setCabecera((current) => ({
         ...current,

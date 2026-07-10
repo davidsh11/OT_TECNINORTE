@@ -257,6 +257,17 @@ export default function CierreOTView({ api }) {
                 </>
               ) : null}
 
+              {selected.RequiereCambioAceite ? (
+                <>
+                  <h4>Detalle de cambio de aceite</h4>
+                  <p className="notes-preview">
+                    <strong>Aceite solicitado:</strong> {selected.AceiteSolicitado || "Sin aceite especificado."}
+                  </p>
+                  <p className="notes-preview">
+                    {selected.TrabajoCambioAceite || "Sin detalle de cambio de aceite."}
+                  </p>
+                </>
+              ) : null}
               <h4>Detalle inicial registrado</h4>
               <div className="consult-detail-list">
                 {detalle.length === 0 ? (

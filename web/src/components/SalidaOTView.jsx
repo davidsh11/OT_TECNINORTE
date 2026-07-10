@@ -188,6 +188,17 @@ export default function SalidaOTView({ api }) {
                 </>
               ) : null}
 
+              {selected.RequiereCambioAceite ? (
+                <>
+                  <h4>Detalle de cambio de aceite</h4>
+                  <p className="notes-preview">
+                    <strong>Aceite solicitado:</strong> {selected.AceiteSolicitado || "Sin aceite especificado."}
+                  </p>
+                  <p className="notes-preview">
+                    {selected.TrabajoCambioAceite || "Sin detalle de cambio de aceite."}
+                  </p>
+                </>
+              ) : null}
               <div className="workshop-actions">
                 <span>Confirme la salida solo cuando el vehículo se entregue al cliente.</span>
                 <button className="primary-button" type="button" onClick={autorizarSalida} disabled={saving}>

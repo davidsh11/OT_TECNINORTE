@@ -87,6 +87,31 @@ export default function CrearOTView({
         <div className="section-heading">
           <div>
             <p className="eyebrow">Servicios adicionales</p>
+            <h2>Cambio de aceite</h2>
+          </div>
+        </div>
+        <label className="company-payment-toggle">
+          <input
+            type="checkbox"
+            checked={Boolean(cabecera.RequiereCambioAceite)}
+            onChange={(event) => onCabeceraChange("RequiereCambioAceite", event.target.checked)}
+          />
+          <span>Esta OT requiere cambio de aceite</span>
+        </label>
+        <label className="field">
+          <span>Aceite solicitado</span>
+          <input
+            disabled={!cabecera.RequiereCambioAceite}
+            placeholder="Ejemplo: 10W30 sintético, 4 litros"
+            value={cabecera.AceiteSolicitado || ""}
+            onChange={(event) => onCabeceraChange("AceiteSolicitado", event.target.value)}
+          />
+        </label>
+      </section>
+      <section className="panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Servicios adicionales</p>
             <h2>Alineacion y balanceo</h2>
           </div>
         </div>

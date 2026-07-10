@@ -24,6 +24,11 @@ export const initialCabecera = {
   TrabajoAlineacionBalanceo: "",
   FechaAlineacionBalanceo: "",
   ValorAlineacionBalanceo: "",
+  RequiereCambioAceite: false,
+  MecanicoCambioAceite: "",
+  AceiteSolicitado: "",
+  TrabajoCambioAceite: "",
+  FechaCambioAceite: "",
   FechaEntrega: ""
 };
 

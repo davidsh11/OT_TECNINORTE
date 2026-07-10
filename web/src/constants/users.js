@@ -27,7 +27,7 @@ export const users = [
     role: "mecanico",
     name: "ANGELF",
     mechanicId: "ANGELF",
-    allowedViews: ["inicio", "taller"],
+    allowedViews: ["inicio", "taller", "seguimiento"],
     canAssignOt: false
   },
   {
@@ -36,7 +36,7 @@ export const users = [
     role: "mecanico",
     name: "FERNANDOS",
     mechanicId: "FERNANDOS",
-    allowedViews: ["inicio", "taller"],
+    allowedViews: ["inicio", "taller", "seguimiento"],
     canAssignOt: false
   },
   {
@@ -45,7 +45,7 @@ export const users = [
     role: "mecanico",
     name: "DIEGOM",
     mechanicId: "DIEGOM",
-    allowedViews: ["inicio", "taller"],
+    allowedViews: ["inicio", "taller", "seguimiento"],
     canAssignOt: false
   },
   {
@@ -54,7 +54,7 @@ export const users = [
     role: "mecanico",
     name: "JORGES",
     mechanicId: "JORGES",
-    allowedViews: ["inicio", "taller"],
+    allowedViews: ["inicio", "taller", "seguimiento"],
     canAssignOt: false
   },
   {
@@ -63,7 +63,7 @@ export const users = [
     role: "mecanico",
     name: "JOSELOS",
     mechanicId: "JOSELOS",
-    allowedViews: ["inicio", "taller"],
+    allowedViews: ["inicio", "taller", "seguimiento"],
     canAssignOt: false
   },
   {
@@ -72,7 +72,7 @@ export const users = [
     role: "mecanico",
     name: "YONG",
     mechanicId: "YONG",
-    allowedViews: ["inicio", "taller"],
+    allowedViews: ["inicio", "taller", "seguimiento"],
     canAssignOt: false
   },
   {
@@ -81,7 +81,7 @@ export const users = [
     role: "mecanico",
     name: "ARMANDOA",
     mechanicId: "ARMANDOA",
-    allowedViews: ["inicio", "taller"],
+    allowedViews: ["inicio", "taller", "seguimiento"],
     canAssignOt: false
   },
   {

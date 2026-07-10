@@ -131,8 +131,17 @@ function isMechanicalCompleted(ot) {
   return Boolean(ot.FechaEntrega) || ["entregado", "completado", "finalizado", "finalizada"].includes(estado);
 }
 
+function hasOilChangeWork(ot) {
+  return Boolean(ot?.RequiereCambioAceite);
+}
+
+function isOilChangeCompleted(ot) {
+  if (!hasOilChangeWork(ot)) return true;
+  return Boolean(ot?.FechaCambioAceite) && normalizeText(ot?.TrabajoCambioAceite) !== "";
+}
+
 function isCompleted(ot) {
-  return isMechanicalCompleted(ot) && isAlignmentBalanceCompleted(ot);
+  return isMechanicalCompleted(ot) && isAlignmentBalanceCompleted(ot) && isOilChangeCompleted(ot);
 }
 function hasChargeValue(ot) {
   return [ot.ValorCobrar, ot.ValorRepuestos, ot.ValorAlineacionBalanceo].some(
@@ -265,6 +274,13 @@ function alignmentTrackingStatus(ot) {
   if (ot.FechaInicioAlineacionBalanceo || normalizeText(ot.EstadoAlineacionBalanceo) === "realizando") return "realizando";
   return "pendiente";
 }
+
+function oilChangeTrackingStatus(ot) {
+  if (!ot?.RequiereCambioAceite) return "finalizada";
+  if (ot.FechaCambioAceite && normalizeText(ot.TrabajoCambioAceite)) return "finalizada";
+  if (ot.FechaInicioCambioAceite || normalizeText(ot.EstadoCambioAceite) === "realizando") return "realizando";
+  return "pendiente";
+}
 function trackingOtPayload(ot) {
   const mechanic = upperText(ot.MecanicoResponsable || ot.MecanicoAsignadoNombre || ot.MecanicoAsignado);
   const status = mechanicTrackingStatus(ot);
@@ -294,6 +310,13 @@ function trackingOtPayload(ot) {
     FechaAlineacionBalanceo: displayDate(ot.FechaAlineacionBalanceo),
     ObservacionAlineacionBalanceo: sentenceText(ot.ObservacionAlineacionBalanceo),
     TrabajoAlineacionBalanceo: sentenceText(ot.TrabajoAlineacionBalanceo),
+    RequiereCambioAceite: Boolean(ot.RequiereCambioAceite),
+    MecanicoCambioAceite: upperText(ot.MecanicoCambioAceite),
+    EstadoCambioAceite: upperText(ot.EstadoCambioAceite),
+    FechaInicioCambioAceite: displayDate(ot.FechaInicioCambioAceite),
+    FechaCambioAceite: displayDate(ot.FechaCambioAceite),
+    AceiteSolicitado: sentenceText(ot.AceiteSolicitado),
+    TrabajoCambioAceite: sentenceText(ot.TrabajoCambioAceite),
     Cobrado: Boolean(ot.Cobrado),
     EsEmpresa: Boolean(ot.EsEmpresa),
     PagoPendienteEmpresa: Boolean(ot.PagoPendienteEmpresa),
@@ -387,13 +410,13 @@ const DEFAULT_SYSTEM_USERS = [
   { username: "recepcion", password: "1234", role: "recepcion", name: "Recepción", allowedViews: ["inicio", "crear", "buscar", "historial", "seguimiento", "salida"] },
   { username: "cobranza", password: "1234", role: "cobranza", name: "Cobranza", allowedViews: ["inicio", "datosClientes", "buscar", "historial", "seguimiento", "cobranza"] },
   { username: "jefe", password: "1234", role: "jefe_taller", name: "Jefe de taller", allowedViews: ["inicio", "buscar", "historial", "taller", "seguimiento", "cierre", "reportes"], canAssignOt: true },
-  { username: "angelf", password: "1234", role: "mecanico", name: "ANGELF", mechanicId: "ANGELF", allowedViews: ["inicio", "taller"], canAssignOt: false },
-  { username: "fernandos", password: "1234", role: "mecanico", name: "FERNANDOS", mechanicId: "FERNANDOS", allowedViews: ["inicio", "taller"], canAssignOt: false },
-  { username: "diegom", password: "1234", role: "mecanico", name: "DIEGOM", mechanicId: "DIEGOM", allowedViews: ["inicio", "taller"], canAssignOt: false },
-  { username: "jorges", password: "1234", role: "mecanico", name: "JORGES", mechanicId: "JORGES", allowedViews: ["inicio", "taller"], canAssignOt: false },
-  { username: "joselos", password: "1234", role: "mecanico", name: "JOSELOS", mechanicId: "JOSELOS", allowedViews: ["inicio", "taller"], canAssignOt: false },
-  { username: "yong", password: "1234", role: "mecanico", name: "YONG", mechanicId: "YONG", allowedViews: ["inicio", "taller"], canAssignOt: false },
-  { username: "armandoa", password: "1234", role: "mecanico", name: "ARMANDOA", mechanicId: "ARMANDOA", allowedViews: ["inicio", "taller"], canAssignOt: false },
+  { username: "angelf", password: "1234", role: "mecanico", name: "ANGELF", mechanicId: "ANGELF", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
+  { username: "fernandos", password: "1234", role: "mecanico", name: "FERNANDOS", mechanicId: "FERNANDOS", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
+  { username: "diegom", password: "1234", role: "mecanico", name: "DIEGOM", mechanicId: "DIEGOM", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
+  { username: "jorges", password: "1234", role: "mecanico", name: "JORGES", mechanicId: "JORGES", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
+  { username: "joselos", password: "1234", role: "mecanico", name: "JOSELOS", mechanicId: "JOSELOS", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
+  { username: "yong", password: "1234", role: "mecanico", name: "YONG", mechanicId: "YONG", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
+  { username: "armandoa", password: "1234", role: "mecanico", name: "ARMANDOA", mechanicId: "ARMANDOA", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "admin", password: "admin", role: "admin", name: "Administrador", allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes", "usuarios"], canAssignOt: true }
 ];
 
@@ -407,6 +430,11 @@ function publicSystemUser(user) {
     const views = new Set(safeUser.allowedViews || []);
     views.delete("reportes");
     views.add("buscar");
+    views.add("seguimiento");
+    safeUser.allowedViews = Array.from(views);
+  }
+  if (safeUser.role === "mecanico") {
+    const views = new Set(safeUser.allowedViews || []);
     views.add("seguimiento");
     safeUser.allowedViews = Array.from(views);
   }
@@ -494,6 +522,13 @@ function buildCabecera(cabecera, otId) {
     FechaAlineacionBalanceo: upperText(cabecera?.FechaAlineacionBalanceo),
     TrabajoAlineacionBalanceo: sentenceText(cabecera?.TrabajoAlineacionBalanceo),
     ObservacionAlineacionBalanceo: sentenceText(cabecera?.ObservacionAlineacionBalanceo),
+    RequiereCambioAceite: Boolean(cabecera?.RequiereCambioAceite),
+    MecanicoCambioAceite: Boolean(cabecera?.RequiereCambioAceite) ? "JOSELOS" : "",
+    EstadoCambioAceite: Boolean(cabecera?.RequiereCambioAceite) ? upperText(cabecera?.EstadoCambioAceite || "PENDIENTE") : "",
+    FechaInicioCambioAceite: upperText(cabecera?.FechaInicioCambioAceite),
+    FechaCambioAceite: upperText(cabecera?.FechaCambioAceite),
+    AceiteSolicitado: sentenceText(cabecera?.AceiteSolicitado),
+    TrabajoCambioAceite: sentenceText(cabecera?.TrabajoCambioAceite),
     EsEmpresa: Boolean(cabecera?.EsEmpresa),
     PagoPendienteEmpresa: Boolean(cabecera?.PagoPendienteEmpresa),
     FechaPagoPendienteEmpresa: upperText(cabecera?.FechaPagoPendienteEmpresa),
@@ -1051,6 +1086,9 @@ app.get("/api/ot", async (req, res) => {
           ot.MecanicoAlineacionBalanceo,
           ot.TrabajoAlineacionBalanceo,
           ot.ObservacionAlineacionBalanceo,
+          ot.MecanicoCambioAceite,
+          ot.AceiteSolicitado,
+          ot.TrabajoCambioAceite,
           ot.ValorCobrar,
           ot.ValorRepuestos,
           ot.Cobrado ? "cobrado" : "",
@@ -1068,7 +1106,8 @@ app.get("/api/ot", async (req, res) => {
           ot.MecanicoResponsable,
           ot.MecanicoAsignado,
           ot.MecanicoAsignadoNombre,
-          ot.MecanicoAlineacionBalanceo
+          ot.MecanicoAlineacionBalanceo,
+          ot.MecanicoCambioAceite
         ].some((value) => normalizeText(value) === assignedTo)
       );
     }
@@ -1120,13 +1159,41 @@ app.get("/api/ot/seguimiento", async (req, res) => {
       const baseRow = trackingOtPayload(ot);
       const rows = [baseRow];
 
+      if (ot.RequiereCambioAceite) {
+        const oilMechanic = upperText(ot.MecanicoCambioAceite || "JOSELOS");
+        const primaryMechanic = upperText(baseRow.MecanicoResponsable);
+        const oilStatus = oilChangeTrackingStatus(ot);
+
+        if (oilMechanic && oilMechanic === primaryMechanic) {
+          baseRow.AreaTrabajo = baseRow.AreaTrabajo ? `${baseRow.AreaTrabajo} + CAMBIO DE ACEITE` : "MECANICA + CAMBIO DE ACEITE";
+          baseRow.AceiteSolicitado = sentenceText(ot.AceiteSolicitado);
+          if (baseRow.EstadoSeguimiento === "finalizada" && oilStatus !== "finalizada") {
+            baseRow.EstadoSeguimiento = oilStatus;
+          } else if (oilStatus === "realizando") {
+            baseRow.EstadoSeguimiento = "realizando";
+          }
+        } else {
+          rows.push({
+            ...trackingOtPayload(ot),
+            MecanicoResponsable: oilMechanic || "JOSELOS",
+            AreaTrabajo: "CAMBIO DE ACEITE",
+            EstadoSeguimiento: oilStatus,
+            FinalizadaMesActual: isCurrentMonthDate(ot.FechaCambioAceite),
+            FechaInicioTrabajo: displayDate(ot.FechaInicioCambioAceite),
+            FechaEntrega: displayDate(ot.FechaCambioAceite),
+            TrabajoRealizado: sentenceText(ot.TrabajoCambioAceite),
+            AceiteSolicitado: sentenceText(ot.AceiteSolicitado),
+            TrabajoCambioAceite: sentenceText(ot.TrabajoCambioAceite)
+          });
+        }
+      }
       if (ot.RequiereAlineacionBalanceo) {
         const alignmentMechanic = upperText(ot.MecanicoAlineacionBalanceo || "FERNANDOS");
         const primaryMechanic = upperText(baseRow.MecanicoResponsable);
         const alignmentStatus = alignmentTrackingStatus(ot);
 
         if (alignmentMechanic && alignmentMechanic === primaryMechanic) {
-          baseRow.AreaTrabajo = "MECANICA + ALINEACION Y BALANCEO";
+          baseRow.AreaTrabajo = baseRow.AreaTrabajo ? `${baseRow.AreaTrabajo} + ALINEACION Y BALANCEO` : "MECANICA + ALINEACION Y BALANCEO";
           baseRow.ObservacionAlineacionBalanceo = sentenceText(ot.ObservacionAlineacionBalanceo);
           if (baseRow.EstadoSeguimiento === "finalizada" && alignmentStatus !== "finalizada") {
             baseRow.EstadoSeguimiento = alignmentStatus;
@@ -1683,6 +1750,7 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
     const mecanico = upperText(req.body?.MecanicoResponsable);
     const area = normalizeText(req.body?.AreaTrabajo);
     const isAlignmentArea = area === "alineacion_balanceo";
+    const isOilChangeArea = area === "cambio_aceite";
     const otRef = db.collection(OT_COLLECTION).doc(id);
     const otSnapshot = await otRef.get();
 
@@ -1691,7 +1759,11 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
     }
 
     const currentOt = otSnapshot.data() || {};
-    const assignedMechanic = isAlignmentArea ? upperText(currentOt.MecanicoAlineacionBalanceo || "FERNANDOS") : upperText(currentOt.MecanicoResponsable);
+    const assignedMechanic = isAlignmentArea
+      ? upperText(currentOt.MecanicoAlineacionBalanceo || "FERNANDOS")
+      : isOilChangeArea
+        ? upperText(currentOt.MecanicoCambioAceite || "JOSELOS")
+        : upperText(currentOt.MecanicoResponsable);
 
     if (!assignedMechanic) {
       return res.status(400).json({ ok: false, error: "La OT no tiene mecánico asignado" });
@@ -1701,7 +1773,7 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
       return res.status(403).json({ ok: false, error: "La OT está asignada a otro mecánico" });
     }
 
-    if (currentOt.Cobrado || currentOt.SalidaAutorizada || (!isAlignmentArea && isCompleted(currentOt))) {
+    if (currentOt.Cobrado || currentOt.SalidaAutorizada || (!isAlignmentArea && !isOilChangeArea && isCompleted(currentOt))) {
       return res.status(409).json({ ok: false, error: "La OT ya no está disponible para iniciar trabajo" });
     }
 
@@ -1718,6 +1790,22 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
         otId: id,
         FechaInicioAlineacionBalanceo: startDate,
         EstadoAlineacionBalanceo: "REALIZANDO"
+      });
+    }
+
+    if (isOilChangeArea) {
+      const startDate = currentOt.FechaInicioCambioAceite || new Date().toISOString();
+      await otRef.update({
+        FechaInicioCambioAceite: startDate,
+        EstadoCambioAceite: "REALIZANDO",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return res.json({
+        ok: true,
+        otId: id,
+        FechaInicioCambioAceite: startDate,
+        EstadoCambioAceite: "REALIZANDO"
       });
     }
 
@@ -1750,6 +1838,7 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
     const userRole = normalizeText(req.body?.userRole);
     const area = normalizeText(req.body?.areaTrabajo || req.body?.AreaTrabajo);
     const isAlignmentArea = area === "alineacion_balanceo";
+    const isOilChangeArea = area === "cambio_aceite";
     const otRef = db.collection(OT_COLLECTION).doc(id);
     const otSnapshot = await otRef.get();
 
@@ -1806,6 +1895,29 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       return res.json({ ok: true, otId: id });
     }
 
+    if (isOilChangeArea) {
+      if (!hasOilChangeWork(currentOt)) {
+        return res.status(400).json({ ok: false, error: "La OT no tiene cambio de aceite asignado" });
+      }
+
+      if (!String(cabecera.TrabajoCambioAceite || "").trim()) {
+        return res.status(400).json({ ok: false, error: "Ingrese el trabajo realizado en cambio de aceite" });
+      }
+
+      const finishDate = cabecera.FechaCambioAceite || new Date().toISOString();
+
+      await otRef.update({
+        MecanicoCambioAceite: "JOSELOS",
+        AceiteSolicitado: sentenceText(cabecera.AceiteSolicitado || currentOt.AceiteSolicitado),
+        TrabajoCambioAceite: sentenceText(cabecera.TrabajoCambioAceite),
+        FechaCambioAceite: upperText(finishDate),
+        EstadoCambioAceite: "FINALIZADO",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return res.json({ ok: true, otId: id });
+    }
+
     const nextEstado = cabecera.Estado || "Recibido";
     const isFinalState = ["finalizado", "finalizada", "entregado", "completado"].includes(normalizeText(nextEstado));
 
@@ -1815,6 +1927,15 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
 
     if (isFinalState && !String(cabecera.TrabajoRealizado || "").trim()) {
       return res.status(400).json({ ok: false, error: "TrabajoRealizado es obligatorio para finalizar la OT" });
+    }
+
+    if (
+      isFinalState &&
+      (cabecera.RequiereCambioAceite || currentOt.RequiereCambioAceite) &&
+      !isOilChangeCompleted(currentOt) &&
+      !String(cabecera.TrabajoCambioAceite || "").trim()
+    ) {
+      return res.status(400).json({ ok: false, error: "No se puede finalizar la OT hasta que JOSELOS marque realizado el cambio de aceite" });
     }
 
     if (isFinalState && (cabecera.RequiereChequeoPreCompra || currentOt.RequiereChequeoPreCompra)) {
@@ -1828,6 +1949,9 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
     const assignedMechanic = upperText(cabecera.MecanicoResponsable);
 
     const requiresAlignmentBalance = Boolean(cabecera.RequiereAlineacionBalanceo) || Boolean(currentOt.RequiereAlineacionBalanceo);
+    const requiresOilChange = Boolean(cabecera.RequiereCambioAceite) || Boolean(currentOt.RequiereCambioAceite);
+    const oilWork = sentenceText(cabecera.TrabajoCambioAceite);
+    const oilRequested = sentenceText(cabecera.AceiteSolicitado ?? currentOt.AceiteSolicitado);
     const alignmentWork = sentenceText(cabecera.TrabajoAlineacionBalanceo);
     const alignmentObservation = sentenceText(cabecera.ObservacionAlineacionBalanceo ?? currentOt.ObservacionAlineacionBalanceo);
     const updatePayload = {
@@ -1841,6 +1965,19 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       Estado: upperText(nextEstado),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
+
+    if (requiresOilChange) {
+      updatePayload.RequiereCambioAceite = true;
+      updatePayload.MecanicoCambioAceite = upperText(currentOt.MecanicoCambioAceite || "JOSELOS");
+      updatePayload.EstadoCambioAceite = upperText(currentOt.EstadoCambioAceite || "PENDIENTE");
+      updatePayload.AceiteSolicitado = oilRequested;
+
+      if (oilWork) {
+        updatePayload.TrabajoCambioAceite = oilWork;
+        updatePayload.FechaCambioAceite = upperText(cabecera.FechaCambioAceite || currentOt.FechaCambioAceite || new Date().toISOString());
+        updatePayload.EstadoCambioAceite = "FINALIZADO";
+      }
+    }
 
     if (requiresAlignmentBalance) {
       updatePayload.RequiereAlineacionBalanceo = true;

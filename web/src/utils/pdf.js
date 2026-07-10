@@ -393,6 +393,16 @@ export function writePdfTab(tab, data) {
 
 
           ${
+            data.cabecera.RequiereCambioAceite || data.cabecera.AceiteSolicitado
+              ? `<section>
+                  <h2>Cambio de aceite solicitado</h2>
+                  <div class="notes">${escapeHtml(
+                    data.cabecera.AceiteSolicitado || "Sin aceite especificado."
+                  )}</div>
+                </section>`
+              : ""
+          }
+          ${
             hasInternalInfo
               ? `<section>
                   <h2>Entrega y trabajo realizado</h2>
@@ -413,7 +423,16 @@ export function writePdfTab(tab, data) {
                         )}</div>`
                       : ""
                   }
-                </section>`
+                  ${
+                    data.cabecera.RequiereCambioAceite || data.cabecera.TrabajoCambioAceite
+                      ? `<h2>Detalle de cambio de aceite</h2>
+                        <div class="notes"><strong>Aceite:</strong> ${escapeHtml(
+                          data.cabecera.AceiteSolicitado || "Sin aceite especificado."
+                        )}<br/><strong>Trabajo realizado:</strong> ${escapeHtml(
+                          data.cabecera.TrabajoCambioAceite || "Sin detalle de cambio de aceite."
+                        )}</div>`
+                      : ""
+                  }                </section>`
               : ""
           }
 

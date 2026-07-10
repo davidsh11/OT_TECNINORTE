@@ -14,6 +14,10 @@ const emptyTaller = {
   FechaAlineacionBalanceo: "",
   RequiereAlineacionBalanceo: false,
   ObservacionAlineacionBalanceo: "",
+  RequiereCambioAceite: false,
+  AceiteSolicitado: "",
+  TrabajoCambioAceite: "",
+  FechaCambioAceite: "",
   FechaEntrega: "",
   Estado: "Recibido"
 };
@@ -38,6 +42,10 @@ function toTallerForm(ot) {
     FechaAlineacionBalanceo: ot?.FechaAlineacionBalanceo || "",
     RequiereAlineacionBalanceo: Boolean(ot?.RequiereAlineacionBalanceo),
     ObservacionAlineacionBalanceo: sentenceText(ot?.ObservacionAlineacionBalanceo),
+    RequiereCambioAceite: Boolean(ot?.RequiereCambioAceite),
+    AceiteSolicitado: sentenceText(ot?.AceiteSolicitado),
+    TrabajoCambioAceite: sentenceText(ot?.TrabajoCambioAceite),
+    FechaCambioAceite: ot?.FechaCambioAceite || "",
     FechaEntrega: ot?.FechaEntrega || "",
     Estado: ot?.Estado || "Recibido"
   };
@@ -59,10 +67,16 @@ function isFinalized(ot) {
   return Boolean(ot?.FechaEntrega) || ["entregado", "completado", "finalizado", "finalizada"].includes(estado);
 }
 
-function workshopStatus(ot, isAlignmentTask = false) {
+function workshopStatus(ot, isAlignmentTask = false, isOilTask = false) {
   if (isAlignmentTask) {
     if (ot?.FechaAlineacionBalanceo && normalizeText(ot?.TrabajoAlineacionBalanceo)) return "finalizada";
     if (ot?.FechaInicioAlineacionBalanceo || normalizeText(ot?.EstadoAlineacionBalanceo) === "realizando") return "realizando";
+    return "pendiente";
+  }
+
+  if (isOilTask) {
+    if (ot?.FechaCambioAceite && normalizeText(ot?.TrabajoCambioAceite)) return "finalizada";
+    if (ot?.FechaInicioCambioAceite || normalizeText(ot?.EstadoCambioAceite) === "realizando") return "realizando";
     return "pendiente";
   }
 
@@ -71,10 +85,9 @@ function workshopStatus(ot, isAlignmentTask = false) {
   return "pendiente";
 }
 
-function statusRank(ot, isAlignmentTask = false) {
-  return { pendiente: 0, realizando: 1, finalizada: 2 }[workshopStatus(ot, isAlignmentTask)] ?? 3;
+function statusRank(ot, isAlignmentTask = false, isOilTask = false) {
+  return { pendiente: 0, realizando: 1, finalizada: 2 }[workshopStatus(ot, isAlignmentTask, isOilTask)] ?? 3;
 }
-
 function WorkshopStatusBadge({ status }) {
   const labels = {
     pendiente: "Pendiente por realizar",
@@ -96,7 +109,7 @@ export default function TallerOTView({ api, currentUser }) {
   const [page, setPage] = useState(1);
 
   const updateForm = (key, value) => {
-    const nextValue = ["RepuestosUsados", "TrabajoRealizado", "TrabajoAlineacionBalanceo", "ObservacionAlineacionBalanceo"].includes(key)
+    const nextValue = ["RepuestosUsados", "TrabajoRealizado", "TrabajoAlineacionBalanceo", "ObservacionAlineacionBalanceo", "AceiteSolicitado", "TrabajoCambioAceite"].includes(key)
       ? sentenceText(value)
       : value;
     setForm((current) => ({ ...current, [key]: nextValue }));
@@ -108,13 +121,21 @@ export default function TallerOTView({ api, currentUser }) {
   const isMechanic = currentUser?.role === "mecanico";
   const hasLaborPrice = Boolean(String(selected?.ValorCobrar || "").trim());
   const isFernandos = currentUser?.name === "FERNANDOS";
+  const isJoselos = currentUser?.name === "JOSELOS";
   const isAlignmentTaskForCurrent = (ot) => Boolean(
     isMechanic &&
       isFernandos &&
       ot?.RequiereAlineacionBalanceo &&
       ot?.MecanicoResponsable !== currentUser?.name
   );
+  const isOilTaskForCurrent = (ot) => Boolean(
+    isMechanic &&
+      isJoselos &&
+      ot?.RequiereCambioAceite &&
+      ot?.MecanicoResponsable !== currentUser?.name
+  );
   const isSelectedAlignmentTask = selected ? isAlignmentTaskForCurrent(selected) : false;
+  const isSelectedOilTask = selected ? isOilTaskForCurrent(selected) : false;
   const canFillAlignmentInSameOt = Boolean(
     selected &&
       isMechanic &&
@@ -122,14 +143,26 @@ export default function TallerOTView({ api, currentUser }) {
       selected.RequiereAlineacionBalanceo &&
       selected.MecanicoResponsable === currentUser?.name
   );
+  const canFillOilInSameOt = Boolean(
+    selected &&
+      isMechanic &&
+      isJoselos &&
+      selected.RequiereCambioAceite &&
+      selected.MecanicoResponsable === currentUser?.name
+  );
   const canEditWorkshopData = isAdmin || (!canAssign && !hasLaborPrice);
   const showAlignmentWorkForm = (isSelectedAlignmentTask || canFillAlignmentInSameOt) && canEditWorkshopData;
-  const hasStartedWork = isSelectedAlignmentTask ? Boolean(selected?.FechaInicioAlineacionBalanceo) : Boolean(selected?.FechaInicioTrabajo);
-  const canStartWork = isMechanic && selected?.ID && !hasStartedWork && !hasLaborPrice && (isSelectedAlignmentTask ? !selected?.FechaAlineacionBalanceo : !selected?.FechaEntrega);
+  const showOilWorkForm = (isSelectedOilTask || canFillOilInSameOt) && canEditWorkshopData;
+  const hasStartedWork = isSelectedAlignmentTask
+    ? Boolean(selected?.FechaInicioAlineacionBalanceo)
+    : isSelectedOilTask
+      ? Boolean(selected?.FechaInicioCambioAceite)
+      : Boolean(selected?.FechaInicioTrabajo);
+  const canStartWork = isMechanic && selected?.ID && !hasStartedWork && !hasLaborPrice && (isSelectedAlignmentTask ? !selected?.FechaAlineacionBalanceo : isSelectedOilTask ? !selected?.FechaCambioAceite : !selected?.FechaEntrega);
   const pageSize = 5;
   const orderedResultados = useMemo(() => {
-    return [...resultados].sort((a, b) => statusRank(a, isAlignmentTaskForCurrent(a)) - statusRank(b, isAlignmentTaskForCurrent(b)));
-  }, [resultados, currentUser?.name, isMechanic, isFernandos]);
+    return [...resultados].sort((a, b) => statusRank(a, isAlignmentTaskForCurrent(a), isOilTaskForCurrent(a)) - statusRank(b, isAlignmentTaskForCurrent(b), isOilTaskForCurrent(b)));
+  }, [resultados, currentUser?.name, isMechanic, isFernandos, isJoselos]);
   const totalPages = Math.max(1, Math.ceil(orderedResultados.length / pageSize));
   const visibleResultados = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -200,17 +233,22 @@ export default function TallerOTView({ api, currentUser }) {
       setError("");
       const res = await axios.patch(`${api}/api/ot/${selected.ID}/inicio-trabajo`, {
         MecanicoResponsable: currentUser?.name,
-        AreaTrabajo: isSelectedAlignmentTask ? "alineacion_balanceo" : "mecanica"
+        AreaTrabajo: isSelectedAlignmentTask ? "alineacion_balanceo" : isSelectedOilTask ? "cambio_aceite" : "mecanica"
       });
       const nextValues = isSelectedAlignmentTask
         ? {
             EstadoAlineacionBalanceo: res.data?.EstadoAlineacionBalanceo || "REALIZANDO",
             FechaInicioAlineacionBalanceo: res.data?.FechaInicioAlineacionBalanceo || new Date().toISOString()
           }
-        : {
-            Estado: res.data?.Estado || "REALIZANDO",
-            FechaInicioTrabajo: res.data?.FechaInicioTrabajo || new Date().toISOString()
-          };
+        : isSelectedOilTask
+          ? {
+              EstadoCambioAceite: res.data?.EstadoCambioAceite || "REALIZANDO",
+              FechaInicioCambioAceite: res.data?.FechaInicioCambioAceite || new Date().toISOString()
+            }
+          : {
+              Estado: res.data?.Estado || "REALIZANDO",
+              FechaInicioTrabajo: res.data?.FechaInicioTrabajo || new Date().toISOString()
+            };
       setSelected((current) => ({ ...current, ...nextValues }));
       setResultados((current) =>
         current.map((ot) => (ot.ID === selected.ID ? { ...ot, ...nextValues } : ot))
@@ -279,6 +317,11 @@ export default function TallerOTView({ api, currentUser }) {
         alert("Ingrese el detalle realizado en alineación y balanceo.");
         return;
       }
+    } else if (isSelectedOilTask) {
+      if (!form.TrabajoCambioAceite.trim()) {
+        alert("Ingrese el detalle realizado en el cambio de aceite.");
+        return;
+      }
     } else if (!canAssign || isAdmin) {
       if (!form.MecanicoResponsable.trim()) {
         alert("La OT debe tener un mecánico responsable.");
@@ -292,6 +335,11 @@ export default function TallerOTView({ api, currentUser }) {
 
       if (!form.FechaEntrega) {
         alert("Ingrese la fecha y hora de entrega para finalizar la OT.");
+        return;
+      }
+
+      if (form.RequiereCambioAceite && !(selected?.FechaCambioAceite && normalizeText(selected?.TrabajoCambioAceite))) {
+        alert("No se puede cerrar la OT hasta que JOSELOS marque realizado el cambio de aceite.");
         return;
       }
 
@@ -321,18 +369,27 @@ export default function TallerOTView({ api, currentUser }) {
         RepuestosUsados: sentenceText(form.RepuestosUsados),
         TrabajoRealizado: sentenceText(form.TrabajoRealizado),
         TrabajoAlineacionBalanceo: sentenceText(form.TrabajoAlineacionBalanceo),
-        FechaAlineacionBalanceo: form.FechaAlineacionBalanceo || new Date().toISOString()
+        TrabajoCambioAceite: sentenceText(form.TrabajoCambioAceite),
+        AceiteSolicitado: sentenceText(form.AceiteSolicitado),
+        FechaAlineacionBalanceo: form.FechaAlineacionBalanceo || new Date().toISOString(),
+        FechaCambioAceite: form.FechaCambioAceite || new Date().toISOString()
       };
       const payload = isSelectedAlignmentTask
         ? {
             TrabajoAlineacionBalanceo: formattedForm.TrabajoAlineacionBalanceo,
             FechaAlineacionBalanceo: formattedForm.FechaAlineacionBalanceo
           }
-        : canAssign && !isAdmin ? formattedForm : { ...formattedForm, Estado: "Finalizado" };
+        : isSelectedOilTask
+          ? {
+              AceiteSolicitado: formattedForm.AceiteSolicitado,
+              TrabajoCambioAceite: formattedForm.TrabajoCambioAceite,
+              FechaCambioAceite: formattedForm.FechaCambioAceite
+            }
+          : canAssign && !isAdmin ? formattedForm : { ...formattedForm, Estado: "Finalizado" };
       await axios.patch(`${api}/api/ot/${selected.ID}/taller`, {
         cabecera: payload,
         userRole: currentUser?.role,
-        areaTrabajo: isSelectedAlignmentTask ? "alineacion_balanceo" : "mecanica"
+        areaTrabajo: isSelectedAlignmentTask ? "alineacion_balanceo" : isSelectedOilTask ? "cambio_aceite" : "mecanica"
       });
 
       if (canAssign && !isAdmin) {
@@ -386,7 +443,7 @@ export default function TallerOTView({ api, currentUser }) {
       {resultados.length > 0 ? (
         <div className="workshop-results">
           {visibleResultados.map((ot) => {
-            const status = workshopStatus(ot, isAlignmentTaskForCurrent(ot));
+            const status = workshopStatus(ot, isAlignmentTaskForCurrent(ot), isOilTaskForCurrent(ot));
 
             return (
               <button
@@ -443,7 +500,7 @@ export default function TallerOTView({ api, currentUser }) {
               <small>
                 Responsable: {form.MecanicoResponsable || "Sin asignar"}
               </small>
-              <WorkshopStatusBadge status={workshopStatus(selected, isSelectedAlignmentTask)} />
+              <WorkshopStatusBadge status={workshopStatus(selected, isSelectedAlignmentTask, isSelectedOilTask)} />
               <small>
                 Estado: {selected.Estado || form.Estado || "RECIBIDO"}
               </small>
@@ -494,7 +551,7 @@ export default function TallerOTView({ api, currentUser }) {
               <div className="workshop-actions">
                 <span>
                   {hasStartedWork
-                    ? `Iniciado: ${formatDate(isSelectedAlignmentTask ? selected.FechaInicioAlineacionBalanceo : selected.FechaInicioTrabajo) || "Sin fecha"}`
+                    ? `Iniciado: ${formatDate(isSelectedAlignmentTask ? selected.FechaInicioAlineacionBalanceo : isSelectedOilTask ? selected.FechaInicioCambioAceite : selected.FechaInicioTrabajo) || "Sin fecha"}`
                     : "Marque el inicio cuando empiece a trabajar esta OT."}
                 </span>
                 <button className="primary-button" type="button" onClick={iniciarTrabajo} disabled={saving || !canStartWork}>
@@ -583,11 +640,63 @@ export default function TallerOTView({ api, currentUser }) {
             </section>
           ) : null}
 
-          {!isSelectedAlignmentTask && canEditWorkshopData ? (
+          {showOilWorkForm ? (
+            <section className="panel">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Cambio de aceite</p>
+                  <h2>Trabajo realizado por JOSELOS</h2>
+                </div>
+              </div>
+              <p className="notes-preview">Aceite solicitado: {selected.AceiteSolicitado || "Sin aceite especificado."}</p>
+              <div className="form-grid">
+                <label className="field">
+                  <span>Mecánico responsable</span>
+                  <input readOnly value="JOSELOS" />
+                </label>
+                <label className="field">
+                  <span>Fecha y hora de finalización</span>
+                  <input
+                    type="datetime-local"
+                    value={form.FechaCambioAceite}
+                    onChange={(event) => updateForm("FechaCambioAceite", event.target.value)}
+                  />
+                </label>
+              </div>
+              <label className="field">
+                <span>Aceite colocado / detalle realizado</span>
+                <textarea
+                  rows="5"
+                  required
+                  value={form.TrabajoCambioAceite}
+                  onChange={(event) => updateForm("TrabajoCambioAceite", event.target.value)}
+                />
+              </label>
+            </section>
+          ) : null}
+          {!isSelectedAlignmentTask && !isSelectedOilTask && canEditWorkshopData ? (
             <TrabajoRealizadoForm cabecera={form} onChange={updateForm} lockMechanic />
           ) : null}
 
-          {!isSelectedAlignmentTask && !showAlignmentWorkForm && canEditWorkshopData ? (
+          {!isSelectedAlignmentTask && !isSelectedOilTask && form.RequiereCambioAceite ? (
+            <section className="panel">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Cambio de aceite</p>
+                  <h2>Estado del cambio de aceite</h2>
+                </div>
+              </div>
+              <p className="notes-preview">
+                Aceite solicitado: {form.AceiteSolicitado || "Sin aceite especificado."}
+              </p>
+              <p className="notes-preview">
+                {selected.FechaCambioAceite && selected.TrabajoCambioAceite
+                  ? `Realizado por JOSELOS: ${selected.TrabajoCambioAceite}`
+                  : "Pendiente de realizar por JOSELOS. No se puede cerrar la OT hasta que quede realizado."}
+              </p>
+            </section>
+          ) : null}
+          {!isSelectedAlignmentTask && !isSelectedOilTask && !showAlignmentWorkForm && canEditWorkshopData ? (
             <section className="panel">
               <div className="section-heading">
                 <div>
