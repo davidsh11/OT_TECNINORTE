@@ -45,7 +45,7 @@ export const users = [
     role: "mecanico",
     name: "DIEGOM",
     mechanicId: "DIEGOM",
-    allowedViews: ["inicio", "taller", "seguimiento"],
+    allowedViews: ["inicio", "crear", "taller", "seguimiento"],
     canAssignOt: false
   },
   {
@@ -63,7 +63,7 @@ export const users = [
     role: "mecanico",
     name: "JOSELOS",
     mechanicId: "JOSELOS",
-    allowedViews: ["inicio", "taller", "seguimiento"],
+    allowedViews: ["inicio", "crear", "taller", "seguimiento"],
     canAssignOt: false
   },
   {

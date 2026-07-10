@@ -412,9 +412,9 @@ const DEFAULT_SYSTEM_USERS = [
   { username: "jefe", password: "1234", role: "jefe_taller", name: "Jefe de taller", allowedViews: ["inicio", "buscar", "historial", "taller", "seguimiento", "cierre", "reportes"], canAssignOt: true },
   { username: "angelf", password: "1234", role: "mecanico", name: "ANGELF", mechanicId: "ANGELF", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "fernandos", password: "1234", role: "mecanico", name: "FERNANDOS", mechanicId: "FERNANDOS", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
-  { username: "diegom", password: "1234", role: "mecanico", name: "DIEGOM", mechanicId: "DIEGOM", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
+  { username: "diegom", password: "1234", role: "mecanico", name: "DIEGOM", mechanicId: "DIEGOM", allowedViews: ["inicio", "crear", "taller", "seguimiento"], canAssignOt: false },
   { username: "jorges", password: "1234", role: "mecanico", name: "JORGES", mechanicId: "JORGES", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
-  { username: "joselos", password: "1234", role: "mecanico", name: "JOSELOS", mechanicId: "JOSELOS", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
+  { username: "joselos", password: "1234", role: "mecanico", name: "JOSELOS", mechanicId: "JOSELOS", allowedViews: ["inicio", "crear", "taller", "seguimiento"], canAssignOt: false },
   { username: "yong", password: "1234", role: "mecanico", name: "YONG", mechanicId: "YONG", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "armandoa", password: "1234", role: "mecanico", name: "ARMANDOA", mechanicId: "ARMANDOA", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "admin", password: "admin", role: "admin", name: "Administrador", allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes", "usuarios"], canAssignOt: true }
@@ -436,6 +436,9 @@ function publicSystemUser(user) {
   if (safeUser.role === "mecanico") {
     const views = new Set(safeUser.allowedViews || []);
     views.add("seguimiento");
+    if (["DIEGOM", "JOSELOS"].includes(upperText(safeUser.name || safeUser.mechanicId))) {
+      views.add("crear");
+    }
     safeUser.allowedViews = Array.from(views);
   }
   if (safeUser.role === "jefe_taller") {
