@@ -446,6 +446,12 @@ function publicSystemUser(user) {
     views.add("buscar");
     safeUser.allowedViews = Array.from(views);
   }
+  if (safeUser.role === "admin") {
+    const views = new Set(safeUser.allowedViews || []);
+    views.add("cumplimiento");
+    views.add("utilidad");
+    safeUser.allowedViews = Array.from(views);
+  }
   return safeUser;
 }
 
@@ -1061,11 +1067,16 @@ app.get("/api/ot", async (req, res) => {
     const paid = String(req.query.paid || "").toLowerCase() === "true";
     const pendingExit = String(req.query.pendingExit || "").toLowerCase() === "true";
     const limit = Math.min(Number(req.query.limit) || 50, 100);
-    const snapshot = await db
+    let query = db
       .collection(OT_COLLECTION)
-      .orderBy("FechaRecepcion", "desc")
-      .limit(limit)
-      .get();
+      .orderBy("FechaRecepcion", "desc");
+
+    // La busqueda se aplica en memoria sobre varios campos. Si se limita la
+    // consulta antes de filtrar, las OT antiguas nunca pueden aparecer aunque
+    // coincidan con la placa, cliente o ID buscado.
+    if (!search) query = query.limit(limit);
+
+    const snapshot = await query.get();
 
     let ordenes = snapshot.docs.map((doc) => ({
       ID: doc.id,
@@ -1135,7 +1146,7 @@ app.get("/api/ot", async (req, res) => {
       ordenes = ordenes.filter((ot) => (Boolean(ot.Cobrado) || Boolean(ot.PagoPendienteEmpresa) || Boolean(ot.PagoParcialPendiente)) && !ot.SalidaAutorizada);
     }
 
-    ordenes = ordenes.map(otListPayload);
+    ordenes = ordenes.slice(0, limit).map(otListPayload);
 
     res.json({ ok: true, ordenes });
   } catch (e) {
@@ -1480,7 +1491,8 @@ app.get("/api/reports/finance", async (req, res) => {
       month,
       montoCobrado: 0,
       montoRepuestos: 0,
-      montoManoObra: 0
+      montoManoObra: 0,
+      manoObraPorMecanico: {}
     }));
 
     ordenes.forEach((ot) => {
@@ -1492,6 +1504,19 @@ app.get("/api/reports/finance", async (req, res) => {
 
       monthly[monthIndex].montoRepuestos += partsAmount;
       monthly[monthIndex].montoManoObra += laborAmount + alignmentAmount;
+
+      const primaryMechanic = upperText(ot.MecanicoResponsable);
+      if (primaryMechanic && laborAmount > 0) {
+        monthly[monthIndex].manoObraPorMecanico[primaryMechanic] =
+          (monthly[monthIndex].manoObraPorMecanico[primaryMechanic] || 0) + laborAmount;
+      }
+
+      const alignmentMechanic = upperText(ot.MecanicoAlineacionBalanceo || "FERNANDOS");
+      if (alignmentAmount > 0) {
+        monthly[monthIndex].manoObraPorMecanico[alignmentMechanic] =
+          (monthly[monthIndex].manoObraPorMecanico[alignmentMechanic] || 0) + alignmentAmount;
+      }
+
       if (ot.Cobrado) {
         monthly[monthIndex].montoCobrado += totalAmount;
       }

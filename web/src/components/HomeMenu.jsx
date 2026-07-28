@@ -1,6 +1,29 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+const MECHANIC_GOALS = {
+  ANGELF: 2102.49,
+  ARMANDOA: 1953.87,
+  DIEGOM: 1230.58,
+  FERNANDOS: 1190.58,
+  JOSELOS: 1071.52,
+  YONG: 1932.0
+};
+
+function currentMonthRange() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const monthNumber = now.getMonth() + 1;
+  const month = `${year}-${String(monthNumber).padStart(2, "0")}`;
+  const lastDay = new Date(year, monthNumber, 0).getDate();
+
+  return {
+    dateFrom: `${month}-01`,
+    dateTo: `${month}-${String(lastDay).padStart(2, "0")}`,
+    year: String(year)
+  };
+}
+
 const actions = [
   {
     view: "crear",
@@ -202,6 +225,7 @@ export default function HomeMenu({
   api,
   userName,
   userRole,
+  mechanicId,
   allowedViews,
   onOpenCrear,
   onOpenBuscar,
@@ -229,6 +253,7 @@ export default function HomeMenu({
     onOpenUsuarios
   };
   const [stats, setStats] = useState(defaultStats);
+  const [mechanicCompliance, setMechanicCompliance] = useState(null);
   const showStats = userRole === "admin";
 
   useEffect(() => {
@@ -257,12 +282,69 @@ export default function HomeMenu({
     };
   }, [api, showStats]);
 
+  useEffect(() => {
+    if (userRole !== "mecanico" || !mechanicId) return undefined;
+
+    const normalizedMechanic = String(mechanicId).toUpperCase();
+    const goal = MECHANIC_GOALS[normalizedMechanic];
+    if (!goal) return undefined;
+
+    let ignore = false;
+    const range = currentMonthRange();
+
+    axios
+      .get(`${api}/api/reports/finance`, {
+        params: { ...range, mechanic: normalizedMechanic }
+      })
+      .then((response) => {
+        if (ignore) return;
+        const mechanicData = (response.data?.byMechanic || []).find(
+          (item) => String(item.mecanico || "").toUpperCase() === normalizedMechanic
+        );
+        const labor = Number(mechanicData?.montoManoObra) || 0;
+        setMechanicCompliance((labor / goal) * 100);
+      })
+      .catch((error) => {
+        console.error("No se pudo cargar el cumplimiento mensual:", error);
+        if (!ignore) setMechanicCompliance(0);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [api, mechanicId, userRole]);
+
   return (
     <section className="home-menu">
       <div className="dashboard-heading">
         <h2>Bienvenido, {userName}</h2>
         <p>Selecciona una opcion para comenzar</p>
       </div>
+
+      {userRole === "mecanico" && mechanicCompliance !== null ? (
+        <article className="mechanic-compliance-banner">
+          <div>
+            <p className="eyebrow">Tu meta del mes</p>
+            <h3>Tu cumplimiento actual</h3>
+
+          </div>
+          <div
+            className="mechanic-compliance-donut"
+            style={{
+              "--mechanic-compliance": Math.min(mechanicCompliance, 100),
+              "--mechanic-compliance-color":
+                mechanicCompliance < 50 ? "#d93636" : mechanicCompliance < 80 ? "#ff8a1f" : "#16a75c"
+            }}
+            role="img"
+            aria-label={`Cumplimiento mensual: ${mechanicCompliance.toFixed(1)} por ciento`}
+          >
+            <div>
+              <strong>{mechanicCompliance.toFixed(1)}%</strong>
+              <span>Cumplimiento</span>
+            </div>
+          </div>
+        </article>
+      ) : null}
 
       {showStats ? (
         <div className="stats-row">

@@ -5,6 +5,7 @@ import BrandHeader from "./components/BrandHeader";
 import BuscarOTView from "./components/BuscarOTView";
 import CierreOTView from "./components/CierreOTView";
 import CobranzaOTView from "./components/CobranzaOTView";
+import CumplimientoView from "./components/CumplimientoView";
 import CrearOTView from "./components/CrearOTView";
 import DatosClientesView from "./components/DatosClientesView";
 import HistorialOTView from "./components/HistorialOTView";
@@ -15,6 +16,7 @@ import SalidaOTView from "./components/SalidaOTView";
 import SeguimientoMecanicosView from "./components/SeguimientoMecanicosView";
 import TallerOTView from "./components/TallerOTView";
 import UsuariosAdminView from "./components/UsuariosAdminView";
+import UtilidadView from "./components/UtilidadView";
 import { clienteFields, initialCabecera, vehiculoFields } from "./constants/formFields";
 import { users } from "./constants/users";
 import { saveOtMedia } from "./utils/localOtMedia";
@@ -437,6 +439,8 @@ export default function App() {
     cobranza: ["Cobranza", "Cobranza"],
     salida: ["Recepción", "Salida de taller"],
     reportes: ["Reportes", "KPIs"],
+    cumplimiento: ["Control de metas", "Cumplimiento"],
+    utilidad: ["Rentabilidad", "Utilidad"],
     usuarios: ["Administración", "Usuarios"]
   }[safeActiveView];
 
@@ -466,6 +470,7 @@ export default function App() {
               api={API}
               userName={currentUser.name}
               userRole={currentUser.role}
+              mechanicId={currentUser.mechanicId}
               allowedViews={allowedViews}
               onOpenCrear={() => setActiveView("crear")}
               onOpenBuscar={() => setActiveView("buscar")}
@@ -531,6 +536,10 @@ export default function App() {
             <SalidaOTView api={API} />
           ) : safeActiveView === "reportes" ? (
             <ReportesOTView api={API} />
+          ) : safeActiveView === "cumplimiento" ? (
+            <CumplimientoView api={API} />
+          ) : safeActiveView === "utilidad" ? (
+            <UtilidadView api={API} />
           ) : safeActiveView === "usuarios" ? (
             <UsuariosAdminView api={API} />
           ) : null}

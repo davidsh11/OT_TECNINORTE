@@ -1,4 +1,4 @@
-﻿const menuItems = [
+const menuItems = [
   ["inicio", "Inicio", "home"],
   ["crear", "Nueva OT", "filePlus"],
   ["taller", "Taller", "wrench"],
@@ -10,6 +10,8 @@
   ["datosClientes", "Datos clientes", "userEdit"],
   ["historial", "Historial", "history"],
   ["reportes", "Reportes", "chart"],
+  ["cumplimiento", "Cumplimiento", "chart"],
+  ["utilidad", "Utilidad", "money"],
   ["usuarios", "Usuarios", "userEdit"]
 ];
 
