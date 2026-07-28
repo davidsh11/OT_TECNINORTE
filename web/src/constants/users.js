@@ -18,7 +18,7 @@ export const users = [
     password: "1234",
     role: "jefe_taller",
     name: "Jefe de taller",
-    allowedViews: ["inicio", "buscar", "historial", "taller", "seguimiento", "cierre", "reportes"],
+    allowedViews: ["inicio", "buscar", "historial", "taller", "seguimiento", "cierre", "reportes", "cumplimiento", "utilidad"],
     canAssignOt: true
   },
   {

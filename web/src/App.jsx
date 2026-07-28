@@ -482,6 +482,8 @@ export default function App() {
               onOpenCobranza={() => setActiveView("cobranza")}
               onOpenSalida={() => setActiveView("salida")}
               onOpenReportes={() => setActiveView("reportes")}
+              onOpenCumplimiento={() => setActiveView("cumplimiento")}
+              onOpenUtilidad={() => setActiveView("utilidad")}
               onOpenUsuarios={() => setActiveView("usuarios")}
             />
           ) : (

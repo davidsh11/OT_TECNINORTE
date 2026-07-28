@@ -106,6 +106,22 @@ const actions = [
     handler: "onOpenReportes"
   },
   {
+    view: "cumplimiento",
+    title: "Cumplimiento",
+    description: "Revisar metas y porcentajes de cumplimiento por mecanico.",
+    icon: "check",
+    tone: "green",
+    handler: "onOpenCumplimiento"
+  },
+  {
+    view: "utilidad",
+    title: "Utilidad",
+    description: "Consultar utilidad y cobertura de gastos por mecanico.",
+    icon: "file",
+    tone: "blue",
+    handler: "onOpenUtilidad"
+  },
+  {
     view: "usuarios",
     title: "Usuarios",
     description: "Restablecer claves y activar o desactivar accesos.",
@@ -237,6 +253,8 @@ export default function HomeMenu({
   onOpenCobranza,
   onOpenSalida,
   onOpenReportes,
+  onOpenCumplimiento,
+  onOpenUtilidad,
   onOpenUsuarios
 }) {
   const handlers = {
@@ -250,6 +268,8 @@ export default function HomeMenu({
     onOpenCobranza,
     onOpenSalida,
     onOpenReportes,
+    onOpenCumplimiento,
+    onOpenUtilidad,
     onOpenUsuarios
   };
   const [stats, setStats] = useState(defaultStats);

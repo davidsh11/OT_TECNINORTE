@@ -409,7 +409,7 @@ const PRE_COMPRA_REQUIRED_ITEMS = PRE_COMPRA_REPORT_SECTIONS.flatMap((section) =
 const DEFAULT_SYSTEM_USERS = [
   { username: "recepcion", password: "1234", role: "recepcion", name: "Recepción", allowedViews: ["inicio", "crear", "buscar", "historial", "seguimiento", "salida"] },
   { username: "cobranza", password: "1234", role: "cobranza", name: "Cobranza", allowedViews: ["inicio", "datosClientes", "buscar", "historial", "seguimiento", "cobranza"] },
-  { username: "jefe", password: "1234", role: "jefe_taller", name: "Jefe de taller", allowedViews: ["inicio", "buscar", "historial", "taller", "seguimiento", "cierre", "reportes"], canAssignOt: true },
+  { username: "jefe", password: "1234", role: "jefe_taller", name: "Jefe de taller", allowedViews: ["inicio", "buscar", "historial", "taller", "seguimiento", "cierre", "reportes", "cumplimiento", "utilidad"], canAssignOt: true },
   { username: "angelf", password: "1234", role: "mecanico", name: "ANGELF", mechanicId: "ANGELF", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "fernandos", password: "1234", role: "mecanico", name: "FERNANDOS", mechanicId: "FERNANDOS", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "diegom", password: "1234", role: "mecanico", name: "DIEGOM", mechanicId: "DIEGOM", allowedViews: ["inicio", "crear", "taller", "seguimiento"], canAssignOt: false },
@@ -444,6 +444,8 @@ function publicSystemUser(user) {
   if (safeUser.role === "jefe_taller") {
     const views = new Set(safeUser.allowedViews || []);
     views.add("buscar");
+    views.add("cumplimiento");
+    views.add("utilidad");
     safeUser.allowedViews = Array.from(views);
   }
   if (safeUser.role === "admin") {
