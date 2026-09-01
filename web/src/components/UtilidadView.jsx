@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 const GASTOS = [
@@ -45,6 +45,7 @@ export default function UtilidadView({ api }) {
   const [month, setMonth] = useState(currentMonth);
   const [byMechanic, setByMechanic] = useState([]);
   const [monthly, setMonthly] = useState([]);
+  const [reportSummary, setReportSummary] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -58,11 +59,13 @@ export default function UtilidadView({ api }) {
       });
       setByMechanic(response.data?.byMechanic || []);
       setMonthly(response.data?.monthly || []);
+      setReportSummary(response.data?.summary || {});
     } catch (requestError) {
       console.error(requestError);
       setError("No se pudo cargar la utilidad de los mecanicos.");
       setByMechanic([]);
       setMonthly([]);
+      setReportSummary({});
     } finally {
       setLoading(false);
     }
@@ -111,6 +114,9 @@ export default function UtilidadView({ api }) {
   const totalUtility = utilidades.reduce((total, item) => total + item.utilidad, 0);
   const totalIncome = utilidades.reduce((total, item) => total + item.ingreso, 0);
   const totalExpense = utilidades.reduce((total, item) => total + item.gasto, 0);
+  const partsSales = Number(reportSummary.montoRepuestos) || 0;
+  const partsProfit = partsSales * 0.35;
+  const totalUtilityWithParts = totalUtility + partsProfit;
 
   return (
     <section className="compliance-view">
@@ -130,7 +136,7 @@ export default function UtilidadView({ api }) {
 
       {error ? <p className="error-state">{error}</p> : null}
 
-      <div className="compliance-summary">
+      <div className="compliance-summary utility-summary">
         <article className="report-kpi count">
           <span>Ingreso total</span>
           <strong>{formatMoney(totalIncome)}</strong>
@@ -142,9 +148,14 @@ export default function UtilidadView({ api }) {
           <small>Gastos mensuales del equipo</small>
         </article>
         <article className={`report-kpi ${totalUtility < 0 ? "pending" : ""}`}>
-          <span>Utilidad total</span>
+          <span>Utilidad mano de obra</span>
           <strong>{formatMoney(totalUtility)}</strong>
-          <small>Ingreso menos gastos</small>
+          <small>Mano de obra menos gastos</small>
+        </article>
+        <article className={`report-kpi parts-profit ${totalUtilityWithParts < 0 ? "pending" : ""}`}>
+          <span>Utilidad total + repuestos</span>
+          <strong>{formatMoney(totalUtilityWithParts)}</strong>
+          <small>{formatMoney(partsProfit)} corresponde al 35% de repuestos</small>
         </article>
       </div>
 

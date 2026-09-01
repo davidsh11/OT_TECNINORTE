@@ -132,7 +132,13 @@ export default function TallerOTView({ api, currentUser }) {
     isMechanic &&
       isJoselos &&
       ot?.RequiereCambioAceite &&
-      ot?.MecanicoResponsable !== currentUser?.name
+      (
+        ot?.MecanicoResponsable !== currentUser?.name ||
+        (
+          isFinalized(ot) &&
+          !(ot?.FechaCambioAceite && normalizeText(ot?.TrabajoCambioAceite))
+        )
+      )
   );
   const isSelectedAlignmentTask = selected ? isAlignmentTaskForCurrent(selected) : false;
   const isSelectedOilTask = selected ? isOilTaskForCurrent(selected) : false;
@@ -150,7 +156,7 @@ export default function TallerOTView({ api, currentUser }) {
       selected.RequiereCambioAceite &&
       selected.MecanicoResponsable === currentUser?.name
   );
-  const canEditWorkshopData = isAdmin || (!canAssign && !hasLaborPrice);
+  const canEditWorkshopData = isAdmin || (!canAssign && (!hasLaborPrice || isSelectedAlignmentTask || isSelectedOilTask));
   const showAlignmentWorkForm = (isSelectedAlignmentTask || canFillAlignmentInSameOt) && canEditWorkshopData;
   const showOilWorkForm = (isSelectedOilTask || canFillOilInSameOt) && canEditWorkshopData;
   const hasStartedWork = isSelectedAlignmentTask
@@ -158,7 +164,7 @@ export default function TallerOTView({ api, currentUser }) {
     : isSelectedOilTask
       ? Boolean(selected?.FechaInicioCambioAceite)
       : Boolean(selected?.FechaInicioTrabajo);
-  const canStartWork = isMechanic && selected?.ID && !hasStartedWork && !hasLaborPrice && (isSelectedAlignmentTask ? !selected?.FechaAlineacionBalanceo : isSelectedOilTask ? !selected?.FechaCambioAceite : !selected?.FechaEntrega);
+  const canStartWork = isMechanic && selected?.ID && !hasStartedWork && (!hasLaborPrice || isSelectedAlignmentTask || isSelectedOilTask) && (isSelectedAlignmentTask ? !selected?.FechaAlineacionBalanceo : isSelectedOilTask ? !selected?.FechaCambioAceite : !selected?.FechaEntrega);
   const pageSize = 5;
   const orderedResultados = useMemo(() => {
     return [...resultados].sort((a, b) => statusRank(a, isAlignmentTaskForCurrent(a), isOilTaskForCurrent(a)) - statusRank(b, isAlignmentTaskForCurrent(b), isOilTaskForCurrent(b)));
@@ -307,7 +313,7 @@ export default function TallerOTView({ api, currentUser }) {
       return;
     }
 
-    if (hasLaborPrice && !isAdmin) {
+    if (hasLaborPrice && !isAdmin && !isSelectedAlignmentTask && !isSelectedOilTask) {
       alert("Esta OT ya tiene precio de mano de obra. Solo admin puede editar repuestos o detalle de trabajo.");
       return;
     }
@@ -335,11 +341,6 @@ export default function TallerOTView({ api, currentUser }) {
 
       if (!form.FechaEntrega) {
         alert("Ingrese la fecha y hora de entrega para finalizar la OT.");
-        return;
-      }
-
-      if (form.RequiereCambioAceite && !(selected?.FechaCambioAceite && normalizeText(selected?.TrabajoCambioAceite))) {
-        alert("No se puede cerrar la OT hasta que JOSELOS marque realizado el cambio de aceite.");
         return;
       }
 
@@ -600,11 +601,70 @@ export default function TallerOTView({ api, currentUser }) {
           </section>
 
           {hasLaborPrice && !isAdmin ? (
-            <p className="empty-state workshop-empty">
-              Esta OT ya tiene precio de mano de obra. Los repuestos y el detalle del trabajo quedan bloqueados.
-            </p>
-          ) : null}
+            <section className="panel workshop-readonly-summary">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Trabajo cerrado</p>
+                  <h2>Detalle del trabajo realizado</h2>
+                </div>
+              </div>
 
+              {selected.MecanicoResponsable === currentUser?.name ? (
+                <div className="workshop-readonly-grid">
+                  <div>
+                    <span>Repuestos utilizados</span>
+                    <p className="notes-preview">
+                      {selected.RepuestosUsados || "Sin repuestos registrados."}
+                    </p>
+                  </div>
+                  <div>
+                    <span>Trabajo realizado</span>
+                    <p className="notes-preview">
+                      {selected.TrabajoRealizado || "Sin detalle de trabajo registrado."}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {isFernandos && selected.RequiereAlineacionBalanceo ? (
+                <div className="workshop-readonly-grid">
+                  <div>
+                    <span>Observacion solicitada</span>
+                    <p className="notes-preview">
+                      {selected.ObservacionAlineacionBalanceo || "Sin observacion registrada."}
+                    </p>
+                  </div>
+                  <div>
+                    <span>Alineacion y balanceo realizado</span>
+                    <p className="notes-preview">
+                      {selected.TrabajoAlineacionBalanceo || "Sin detalle de trabajo registrado."}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {isJoselos && selected.RequiereCambioAceite ? (
+                <div className="workshop-readonly-grid">
+                  <div>
+                    <span>Aceite solicitado</span>
+                    <p className="notes-preview">
+                      {selected.AceiteSolicitado || "Sin aceite especificado."}
+                    </p>
+                  </div>
+                  <div>
+                    <span>Cambio de aceite realizado</span>
+                    <p className="notes-preview">
+                      {selected.TrabajoCambioAceite || "Sin detalle de trabajo registrado."}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <p className="empty-state workshop-empty">
+                Esta OT esta cerrada para edicion. El detalle permanece disponible en modo de consulta.
+              </p>
+            </section>
+          ) : null}
           {showAlignmentWorkForm ? (
             <section className="panel">
               <div className="section-heading">
@@ -692,7 +752,7 @@ export default function TallerOTView({ api, currentUser }) {
               <p className="notes-preview">
                 {selected.FechaCambioAceite && selected.TrabajoCambioAceite
                   ? `Realizado por JOSELOS: ${selected.TrabajoCambioAceite}`
-                  : "Pendiente de realizar por JOSELOS. No se puede cerrar la OT hasta que quede realizado."}
+                  : "Pendiente de realizar por JOSELOS. La mecanica principal puede cerrarse y JOSELOS completara esta tarea por separado."}
               </p>
             </section>
           ) : null}
@@ -767,7 +827,7 @@ export default function TallerOTView({ api, currentUser }) {
                 className="primary-button"
                 type="button"
                 onClick={guardarTaller}
-                disabled={saving || (hasLaborPrice && !isAdmin)}
+                disabled={saving || (hasLaborPrice && !isAdmin && !isSelectedAlignmentTask && !isSelectedOilTask)}
               >
                 {saving ? "Guardando..." : "Guardar datos de taller"}
               </button>

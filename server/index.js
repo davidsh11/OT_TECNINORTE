@@ -1,7 +1,8 @@
-console.log("BOOT:", __filename);
+﻿console.log("BOOT:", __filename);
 
 const express = require("express");
 const cors = require("cors");
+const crypto = require("crypto");
 const { v4: uuidv4 } = require("uuid");
 const { admin, getFirebase, initFirebase, OT_COLLECTION } = require("./firebase");
 
@@ -14,6 +15,9 @@ const CLIENTES_COLLECTION = process.env.FIRESTORE_CLIENTES_COLLECTION || "Client
 const CLIENTES_VEHICULOS_COLLECTION =
   process.env.FIRESTORE_CLIENTES_VEHICULOS_COLLECTION || "ClientesVehiculos";
 const SYSTEM_USERS_COLLECTION = process.env.SYSTEM_USERS_COLLECTION || "UsuariosSistema";
+const VACATION_COLLECTION = process.env.FIRESTORE_VACATION_COLLECTION || "VacacionesMecanicos";
+const VACATION_DOC_ID = "general";
+const VACATION_MECHANICS = ["ANGELF", "ARMANDOA", "DIEGOM", "FERNANDOS", "JOSELOS", "DANNAS"];
 const MONTH_LABELS = [
   "Enero",
   "Febrero",
@@ -28,6 +32,47 @@ const MONTH_LABELS = [
   "Noviembre",
   "Diciembre"
 ];
+
+function sessionSecret() {
+  const secret = process.env.SESSION_SECRET || process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (secret) return secret;
+  if (process.env.NODE_ENV !== "production") return "tecninorte-local-session-secret";
+  throw new Error("SESSION_SECRET no esta configurado");
+}
+
+function encodeSessionPart(value) {
+  return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+
+function createSessionToken(user) {
+  const payload = encodeSessionPart({ username: user.username, role: user.role, name: user.name, mechanicId: user.mechanicId || "", exp: Date.now() + 30 * 24 * 60 * 60 * 1000 });
+  const signature = crypto.createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
+  return payload + "." + signature;
+}
+
+function requireSession(req, res, next) {
+  try {
+    const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const [payloadPart, signature] = token.split(".");
+    if (!payloadPart || !signature) return res.status(401).json({ ok: false, error: "Sesion requerida" });
+    const expected = crypto.createHmac("sha256", sessionSecret()).update(payloadPart).digest("base64url");
+    const validSignature = signature.length === expected.length && crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    if (!validSignature) return res.status(401).json({ ok: false, error: "Sesion no valida" });
+    const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8"));
+    if (Number(payload.exp) <= Date.now()) return res.status(401).json({ ok: false, error: "Sesion vencida" });
+    req.sessionUser = payload;
+    next();
+  } catch (e) {
+    return res.status(401).json({ ok: false, error: "Sesion no valida" });
+  }
+}
+
+function requireAdminSession(req, res, next) {
+  requireSession(req, res, () => {
+    if (req.sessionUser.role !== "admin") return res.status(403).json({ ok: false, error: "Acceso exclusivo para administrador" });
+    next();
+  });
+}
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
@@ -140,8 +185,12 @@ function isOilChangeCompleted(ot) {
   return Boolean(ot?.FechaCambioAceite) && normalizeText(ot?.TrabajoCambioAceite) !== "";
 }
 
+function isReadyForLaborPricing(ot) {
+  return isMechanicalCompleted(ot) && isAlignmentBalanceCompleted(ot);
+}
+
 function isCompleted(ot) {
-  return isMechanicalCompleted(ot) && isAlignmentBalanceCompleted(ot) && isOilChangeCompleted(ot);
+  return isReadyForLaborPricing(ot) && isOilChangeCompleted(ot);
 }
 function hasChargeValue(ot) {
   return [ot.ValorCobrar, ot.ValorRepuestos, ot.ValorAlineacionBalanceo].some(
@@ -417,7 +466,7 @@ const DEFAULT_SYSTEM_USERS = [
   { username: "joselos", password: "1234", role: "mecanico", name: "JOSELOS", mechanicId: "JOSELOS", allowedViews: ["inicio", "crear", "taller", "seguimiento"], canAssignOt: false },
   { username: "yong", password: "1234", role: "mecanico", name: "YONG", mechanicId: "YONG", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "armandoa", password: "1234", role: "mecanico", name: "ARMANDOA", mechanicId: "ARMANDOA", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
-  { username: "admin", password: "admin", role: "admin", name: "Administrador", allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes", "usuarios"], canAssignOt: true }
+  { username: "admin", password: "admin", role: "admin", name: "Administrador", allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes", "cumplimiento", "utilidad", "vacaciones", "usuarios"], canAssignOt: true }
 ];
 
 function userDocId(username) {
@@ -452,6 +501,7 @@ function publicSystemUser(user) {
     const views = new Set(safeUser.allowedViews || []);
     views.add("cumplimiento");
     views.add("utilidad");
+    views.add("vacaciones");
     safeUser.allowedViews = Array.from(views);
   }
   return safeUser;
@@ -581,7 +631,7 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(401).json({ ok: false, error: "Usuario o clave incorrectos" });
     }
 
-    res.json({ ok: true, user: publicSystemUser(user) });
+    res.json({ ok: true, user: publicSystemUser(user), token: createSessionToken(user) });
   } catch (e) {
     console.error("POST /api/auth/login fallo:", e);
     res.status(500).json({ ok: false, error: e.message });
@@ -654,6 +704,129 @@ app.patch("/api/system-users/:username/active", async (req, res) => {
   }
 });
 
+
+app.get("/api/vacaciones/mias", requireSession, async (req, res) => {
+  try {
+    const sessionUser = req.sessionUser;
+    const employee = sessionUser.role === "cobranza"
+      ? "DANNAS"
+      : sessionUser.role === "mecanico"
+        ? upperText(sessionUser.mechanicId || sessionUser.name)
+        : "";
+    if (!VACATION_MECHANICS.includes(employee)) return res.status(403).json({ ok: false, error: "No tiene vacaciones asignadas" });
+    const { db } = getFirebase();
+    const snapshot = await db.collection(VACATION_COLLECTION).doc(VACATION_DOC_ID).get();
+    const stored = snapshot.exists ? snapshot.data()?.registros?.[employee] || {} : {};
+    res.json({
+      ok: true,
+      registro: {
+        mecanico: employee,
+        fechaIngreso: stored.fechaIngreso || "",
+        diasAnuales: Number(stored.diasAnuales) || 15,
+        ajustes: Array.isArray(stored.ajustes) ? stored.ajustes : []
+      }
+    });
+  } catch (e) {
+    console.error("GET /api/vacaciones/mias fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/vacaciones", requireAdminSession, async (req, res) => {
+  try {
+    const { db } = getFirebase();
+    const snapshot = await db.collection(VACATION_COLLECTION).doc(VACATION_DOC_ID).get();
+    const stored = snapshot.exists ? snapshot.data()?.registros || {} : {};
+    const registros = VACATION_MECHANICS.map((mecanico) => ({
+      mecanico,
+      fechaIngreso: stored[mecanico]?.fechaIngreso || "",
+      diasAnuales: Number(stored[mecanico]?.diasAnuales) || 15,
+      ajustes: Array.isArray(stored[mecanico]?.ajustes) ? stored[mecanico].ajustes : []
+    }));
+    res.json({ ok: true, registros });
+  } catch (e) {
+    console.error("GET /api/vacaciones fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.patch("/api/vacaciones/:mecanico", requireAdminSession, async (req, res) => {
+  try {
+    const mecanico = upperText(req.params.mecanico);
+    const fechaIngreso = String(req.body?.fechaIngreso || "").trim();
+    const diasAnuales = Number(req.body?.diasAnuales);
+    if (!VACATION_MECHANICS.includes(mecanico)) return res.status(404).json({ ok: false, error: "Mecanico no registrado para vacaciones" });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaIngreso)) return res.status(400).json({ ok: false, error: "Ingrese una fecha de ingreso valida" });
+    if (!Number.isFinite(diasAnuales) || diasAnuales <= 0 || diasAnuales > 60) return res.status(400).json({ ok: false, error: "Los dias anuales deben estar entre 0 y 60" });
+    const { db } = getFirebase();
+    const ref = db.collection(VACATION_COLLECTION).doc(VACATION_DOC_ID);
+    await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      const registros = snapshot.exists ? snapshot.data()?.registros || {} : {};
+      const current = registros[mecanico] || {};
+      transaction.set(ref, { registros: { ...registros, [mecanico]: { ...current, fechaIngreso, diasAnuales, ajustes: Array.isArray(current.ajustes) ? current.ajustes : [] } }, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    });
+    res.json({ ok: true, mecanico, fechaIngreso, diasAnuales });
+  } catch (e) {
+    console.error("PATCH /api/vacaciones/:mecanico fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post("/api/vacaciones/:mecanico/ajustes", requireAdminSession, async (req, res) => {
+  try {
+    const mecanico = upperText(req.params.mecanico);
+    const dias = Number(req.body?.dias);
+    const motivo = sentenceText(req.body?.motivo);
+    if (!VACATION_MECHANICS.includes(mecanico)) return res.status(404).json({ ok: false, error: "Mecanico no registrado para vacaciones" });
+    if (!Number.isFinite(dias) || dias === 0 || Math.abs(dias) > 365 || Math.abs(dias * 2 - Math.round(dias * 2)) > 0.000001) {
+      return res.status(400).json({ ok: false, error: "El ajuste debe ser positivo o negativo, en pasos de medio dia" });
+    }
+    if (!motivo) return res.status(400).json({ ok: false, error: "Ingrese el motivo del ajuste" });
+    const ajuste = { id: uuidv4(), dias, motivo, fecha: new Date().toISOString() };
+    const { db } = getFirebase();
+    const ref = db.collection(VACATION_COLLECTION).doc(VACATION_DOC_ID);
+    await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      const registros = snapshot.exists ? snapshot.data()?.registros || {} : {};
+      const current = registros[mecanico] || {};
+      transaction.set(ref, { registros: { ...registros, [mecanico]: { fechaIngreso: current.fechaIngreso || "", diasAnuales: Number(current.diasAnuales) || 15, ajustes: [...(Array.isArray(current.ajustes) ? current.ajustes : []), ajuste] } }, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    });
+    res.json({ ok: true, mecanico, ajuste });
+  } catch (e) {
+    console.error("POST /api/vacaciones/:mecanico/ajustes fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+
+app.delete("/api/vacaciones/:mecanico/ajustes/:ajusteId", requireAdminSession, async (req, res) => {
+  try {
+    const mecanico = upperText(req.params.mecanico);
+    const ajusteId = String(req.params.ajusteId || "").trim();
+    if (!VACATION_MECHANICS.includes(mecanico)) return res.status(404).json({ ok: false, error: "Empleado no registrado para vacaciones" });
+    if (!ajusteId) return res.status(400).json({ ok: false, error: "Ajuste no valido" });
+    const { db } = getFirebase();
+    const ref = db.collection(VACATION_COLLECTION).doc(VACATION_DOC_ID);
+    let deleted = false;
+    await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      const registros = snapshot.exists ? snapshot.data()?.registros || {} : {};
+      const current = registros[mecanico] || {};
+      const ajustes = Array.isArray(current.ajustes) ? current.ajustes : [];
+      const nextAdjustments = ajustes.filter((item) => item.id !== ajusteId);
+      deleted = nextAdjustments.length !== ajustes.length;
+      if (deleted) {
+        transaction.set(ref, { registros: { ...registros, [mecanico]: { ...current, ajustes: nextAdjustments } }, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      }
+    });
+    if (!deleted) return res.status(404).json({ ok: false, error: "Movimiento no encontrado" });
+    res.json({ ok: true, mecanico, ajusteId });
+  } catch (e) {
+    console.error("DELETE /api/vacaciones/:mecanico/ajustes/:ajusteId fallo:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 app.post("/api/ot", async (req, res) => {
   try {
@@ -1133,7 +1306,7 @@ app.get("/api/ot", async (req, res) => {
     }
 
     if (completed) {
-      ordenes = ordenes.filter(isCompleted);
+      ordenes = ordenes.filter(isReadyForLaborPricing);
     }
 
     if (chargeReady) {
@@ -1879,7 +2052,7 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
     const currentOt = otSnapshot.data() || {};
     const hasLaborPrice = hasChargeValue(currentOt);
 
-    if (hasLaborPrice && userRole !== "admin") {
+    if (hasLaborPrice && userRole !== "admin" && !isAlignmentArea && !isOilChangeArea) {
       return res.status(409).json({
         ok: false,
         error: "La OT ya tiene precio de mano de obra. Solo admin puede editar datos de taller"
@@ -1957,15 +2130,6 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
 
     if (isFinalState && !String(cabecera.TrabajoRealizado || "").trim()) {
       return res.status(400).json({ ok: false, error: "TrabajoRealizado es obligatorio para finalizar la OT" });
-    }
-
-    if (
-      isFinalState &&
-      (cabecera.RequiereCambioAceite || currentOt.RequiereCambioAceite) &&
-      !isOilChangeCompleted(currentOt) &&
-      !String(cabecera.TrabajoCambioAceite || "").trim()
-    ) {
-      return res.status(400).json({ ok: false, error: "No se puede finalizar la OT hasta que JOSELOS marque realizado el cambio de aceite" });
     }
 
     if (isFinalState && (cabecera.RequiereChequeoPreCompra || currentOt.RequiereChequeoPreCompra)) {
@@ -2078,8 +2242,3 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`API corriendo en http://localhost:${PORT}`);
   console.log(`Firestore collection: ${OT_COLLECTION}`);
 });
-
-
-
-
-

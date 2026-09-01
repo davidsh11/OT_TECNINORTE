@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import TecniNorteLogo from "./TecniNorteLogo";
 
@@ -15,7 +15,7 @@ export default function LoginView({ api, onLogin }) {
       setLoading(true);
       setError("");
       const res = await axios.post(`${api}/api/auth/login`, { username, password });
-      onLogin(res.data.user);
+      onLogin(res.data.user, res.data.token);
     } catch (requestError) {
       console.error(requestError);
       setError(requestError.response?.data?.error || "Usuario o clave incorrectos.");

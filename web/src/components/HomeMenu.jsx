@@ -1,6 +1,24 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import axios from "axios";
 
+const VACATION_CACHE_TTL = 15 * 60 * 1000;
+const VACATION_DAY_MS = 24 * 60 * 60 * 1000;
+
+function availableVacationDays(record) {
+  if (!record?.fechaIngreso) return 0;
+  const [year, month, day] = String(record.fechaIngreso).slice(0, 10).split("-").map(Number);
+  const hireDate = new Date(year, month - 1, day, 12);
+  const cutoff = new Date(2026, 0, 1, 12);
+  const start = hireDate > cutoff ? hireDate : cutoff;
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  if (Number.isNaN(start.getTime()) || start > today) return 0;
+  const accrued = (((today - start) / VACATION_DAY_MS) / 365.2425) * (Number(record.diasAnuales) || 15);
+  const adjustments = (record.ajustes || [])
+    .filter((item) => new Date(item.fecha) >= start)
+    .reduce((total, item) => total + (Number(item.dias) || 0), 0);
+  return accrued + adjustments;
+}
 const MECHANIC_GOALS = {
   ANGELF: 2102.49,
   ARMANDOA: 1953.87,
@@ -274,6 +292,7 @@ export default function HomeMenu({
   };
   const [stats, setStats] = useState(defaultStats);
   const [mechanicCompliance, setMechanicCompliance] = useState(null);
+  const [personalVacationDays, setPersonalVacationDays] = useState(null);
   const showStats = userRole === "admin";
 
   useEffect(() => {
@@ -334,6 +353,42 @@ export default function HomeMenu({
     };
   }, [api, mechanicId, userRole]);
 
+  useEffect(() => {
+    if (!(["mecanico", "cobranza"].includes(userRole))) return undefined;
+    const employee = userRole === "cobranza" ? "DANNAS" : String(mechanicId || userName || "").toUpperCase();
+    if (!employee) return undefined;
+    const cacheKey = `tecninorte-vacaciones-personal-${employee}`;
+    let ignore = false;
+
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+      if (cached?.savedAt && Date.now() - cached.savedAt < VACATION_CACHE_TTL) {
+        queueMicrotask(() => {
+          if (!ignore) setPersonalVacationDays(Number(cached.days) || 0);
+        });
+        return () => {
+          ignore = true;
+        };
+      }
+    } catch {
+      localStorage.removeItem(cacheKey);
+    }
+
+    axios.get(`${api}/api/vacaciones/mias`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("tecninorte-session-token") || ""}` }
+    }).then((response) => {
+      if (ignore) return;
+      const days = availableVacationDays(response.data?.registro);
+      setPersonalVacationDays(days);
+      localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), days }));
+    }).catch((error) => {
+      console.error("No se pudo cargar el saldo personal de vacaciones:", error);
+    });
+
+    return () => {
+      ignore = true;
+    };
+  }, [api, mechanicId, userName, userRole]);
   return (
     <section className="home-menu">
       <div className="dashboard-heading">
@@ -366,6 +421,19 @@ export default function HomeMenu({
         </article>
       ) : null}
 
+      {["mecanico", "cobranza"].includes(userRole) && personalVacationDays !== null ? (
+        <article className="mechanic-compliance-banner vacation-balance-banner">
+          <div>
+            <p className="eyebrow">Tu saldo disponible</p>
+            <h3>Días de vacaciones</h3>
+            <p>Puedes solicitar estos días libres según el saldo registrado.</p>
+          </div>
+          <div className="vacation-balance-value" aria-label={`${personalVacationDays.toFixed(2)} días de vacaciones disponibles`}>
+            <strong>{personalVacationDays.toFixed(2)}</strong>
+            <span>días disponibles</span>
+          </div>
+        </article>
+      ) : null}
       {showStats ? (
         <div className="stats-row">
           {stats.map(([label, value, description, icon]) => (
@@ -412,5 +480,3 @@ export default function HomeMenu({
     </section>
   );
 }
-
-

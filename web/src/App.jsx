@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import axios from "axios";
 import AppMenu from "./components/AppMenu";
 import BrandHeader from "./components/BrandHeader";
@@ -17,6 +17,7 @@ import SeguimientoMecanicosView from "./components/SeguimientoMecanicosView";
 import TallerOTView from "./components/TallerOTView";
 import UsuariosAdminView from "./components/UsuariosAdminView";
 import UtilidadView from "./components/UtilidadView";
+import VacacionesView from "./components/VacacionesView";
 import { clienteFields, initialCabecera, vehiculoFields } from "./constants/formFields";
 import { users } from "./constants/users";
 import { saveOtMedia } from "./utils/localOtMedia";
@@ -404,7 +405,8 @@ export default function App() {
     }
   };
 
-  const login = (user) => {
+  const login = (user, token) => {
+    localStorage.setItem("tecninorte-session-token", token || "");
     localStorage.setItem("tecninorte-user", user.username);
     localStorage.setItem("tecninorte-role", user.role);
     localStorage.setItem("tecninorte-user-data", JSON.stringify(user));
@@ -416,6 +418,7 @@ export default function App() {
     localStorage.removeItem("tecninorte-user");
     localStorage.removeItem("tecninorte-role");
     localStorage.removeItem("tecninorte-user-data");
+    localStorage.removeItem("tecninorte-session-token");
     setCurrentUser(null);
     setActiveView("inicio");
   };
@@ -441,6 +444,7 @@ export default function App() {
     reportes: ["Reportes", "KPIs"],
     cumplimiento: ["Control de metas", "Cumplimiento"],
     utilidad: ["Rentabilidad", "Utilidad"],
+    vacaciones: ["Administracion", "Vacaciones"],
     usuarios: ["Administración", "Usuarios"]
   }[safeActiveView];
 
@@ -542,6 +546,8 @@ export default function App() {
             <CumplimientoView api={API} />
           ) : safeActiveView === "utilidad" ? (
             <UtilidadView api={API} />
+          ) : safeActiveView === "vacaciones" ? (
+            <VacacionesView api={API} />
           ) : safeActiveView === "usuarios" ? (
             <UsuariosAdminView api={API} />
           ) : null}
@@ -550,4 +556,3 @@ export default function App() {
     </main>
   );
 }
-

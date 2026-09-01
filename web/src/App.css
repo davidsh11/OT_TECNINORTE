@@ -1,4 +1,4 @@
-.app-shell {
+﻿.app-shell {
   display: grid;
   grid-template-rows: 150px minmax(0, 1fr);
   width: min(1530px, calc(100% - 48px));
@@ -2800,4 +2800,252 @@ button:disabled {
     #16a75c calc(var(--compliance-percent) * 1%),
     #dce8f7 0
   );
+}
+.workshop-readonly-summary {
+  display: grid;
+  gap: 16px;
+}
+
+.workshop-readonly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.workshop-readonly-grid > div {
+  display: grid;
+  gap: 7px;
+}
+
+.workshop-readonly-grid > div > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@media (max-width: 700px) {
+  .workshop-readonly-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vacation-view { display: grid; gap: 18px; }
+.vacation-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.vacation-heading h2, .vacation-card h3 { margin: 0; color: var(--ink); }
+.vacation-heading p:not(.eyebrow) { margin: 7px 0 0; color: var(--muted); }
+.vacation-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.vacation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.vacation-card { display: grid; gap: 18px; }
+.vacation-card-title { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.vacation-card-title > strong { color: var(--accent-blue); font-size: 24px; }
+.vacation-config { display: grid; grid-template-columns: minmax(150px, 1fr) 120px auto; align-items: end; gap: 10px; }
+.vacation-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.vacation-metrics span { display: grid; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.vacation-metrics strong { color: var(--ink); font-size: 14px; text-transform: none; }
+.vacation-adjustment { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+.vacation-adjustment-buttons { display: flex; gap: 6px; }
+.vacation-adjustment-buttons button { min-width: 48px; padding: 11px 10px; border: 0; border-radius: 10px; color: #fff; font-weight: 900; }
+.vacation-remove { background: #d93636; }
+.vacation-add { background: #16a75c; }
+.vacation-history { border-top: 1px solid var(--line); padding-top: 12px; }
+.vacation-history summary { cursor: pointer; color: var(--accent-blue); font-weight: 850; }
+.vacation-history > div { display: grid; grid-template-columns: 95px 85px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.vacation-history p { margin: 0; }
+.vacation-history .positive { color: var(--success); }
+.vacation-history .negative { color: #d93636; }
+@media (max-width: 1180px) { .vacation-summary, .vacation-grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .vacation-heading { align-items: stretch; flex-direction: column; }
+  .vacation-config, .vacation-metrics, .vacation-adjustment { grid-template-columns: 1fr; }
+  .vacation-adjustment-buttons { flex-wrap: wrap; }
+  .vacation-history > div { grid-template-columns: 1fr; }
+}
+/* Report charts readability */
+.report-chart-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.report-chart-grid > .panel {
+  overflow: hidden;
+}
+
+.monthly-chart {
+  grid-template-columns: repeat(12, minmax(72px, 1fr));
+  gap: 12px;
+  min-height: 310px;
+  padding: 22px 16px 8px;
+  overflow-x: auto;
+  background:
+    linear-gradient(to top, rgba(174, 192, 216, 0.55) 1px, transparent 1px) 0 0 / 100% 25%,
+    #f8fbff;
+}
+
+.monthly-group {
+  grid-template-rows: 238px auto;
+  gap: 12px;
+}
+
+.monthly-bars {
+  gap: 9px;
+  height: 238px;
+}
+
+.bar-item {
+  grid-template-rows: 28px minmax(4px, 1fr);
+  gap: 7px;
+  min-width: 28px;
+}
+
+.bar-item em {
+  writing-mode: horizontal-tb;
+  transform: none;
+  color: #334e72;
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.monthly-bars i {
+  width: 20px;
+  border-radius: 7px 7px 2px 2px;
+  box-shadow: 0 2px 5px rgba(0, 31, 77, 0.16);
+}
+
+.monthly-chart.single .monthly-bars i {
+  width: 34px;
+}
+
+.monthly-group strong {
+  padding-top: 6px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.chart-legend {
+  gap: 20px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.chart-legend i {
+  width: 18px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.mechanic-bar {
+  grid-template-columns: 150px minmax(220px, 1fr) minmax(300px, 380px);
+  gap: 20px;
+  padding: 16px 18px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(0, 31, 77, 0.06);
+}
+
+.mechanic-bar-values {
+  gap: 7px;
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+}
+
+.mechanic-bar-values small {
+  line-height: 1.4;
+}
+
+@media (max-width: 760px) {
+  .monthly-chart {
+    grid-template-columns: repeat(12, 74px);
+  }
+
+  .mechanic-bar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .mechanic-bar-values {
+    padding-top: 10px;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+}
+
+.utility-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1150px) { .utility-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .utility-summary { grid-template-columns: 1fr; } }
+
+
+/* Vacation custom adjustments */
+.vacation-adjustment-buttons.custom-days {
+  display: grid;
+  grid-template-columns: 125px auto;
+  align-items: end;
+}
+
+.vacation-adjustment-buttons.custom-days button {
+  min-width: 92px;
+}
+
+.vacation-history > div {
+  grid-template-columns: 95px 85px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.vacation-delete-adjustment {
+  padding: 7px 10px;
+  border: 1px solid #ef7777;
+  border-radius: 8px;
+  background: #fff4f4;
+  color: #c52d2d;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.vacation-delete-adjustment:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+@media (max-width: 700px) {
+  .vacation-adjustment-buttons.custom-days,
+  .vacation-history > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Personal vacation balance */
+.vacation-balance-banner {
+  border-left-color: #16a75c;
+}
+
+.vacation-balance-value {
+  display: grid;
+  flex: 0 0 170px;
+  min-height: 118px;
+  place-content: center;
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, #e8f8ef, #d4f2e1);
+  color: #08743d;
+  text-align: center;
+}
+
+.vacation-balance-value strong {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.vacation-balance-value span {
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+@media (max-width: 700px) {
+  .vacation-balance-value {
+    width: 100%;
+    min-height: 100px;
+  }
 }

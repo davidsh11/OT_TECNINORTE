@@ -12,6 +12,7 @@ const menuItems = [
   ["reportes", "Reportes", "chart"],
   ["cumplimiento", "Cumplimiento", "chart"],
   ["utilidad", "Utilidad", "money"],
+  ["vacaciones", "Vacaciones", "history"],
   ["usuarios", "Usuarios", "userEdit"]
 ];
 

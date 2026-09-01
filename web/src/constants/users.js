@@ -89,7 +89,7 @@ export const users = [
     password: "admin",
     role: "admin",
     name: "Administrador",
-    allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes", "cumplimiento", "utilidad", "usuarios"],
+    allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes", "cumplimiento", "utilidad", "vacaciones", "usuarios"],
     canAssignOt: true
   }
 ];
