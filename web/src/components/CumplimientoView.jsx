@@ -3,10 +3,10 @@ import axios from "axios";
 
 const METAS = [
   { mecanico: "ANGELF", meta: 2102.49 },
-  { mecanico: "ARMANDOA", meta: 1953.87 },
+  { mecanico: "ARMANDOA", meta: 2102.49 },
   { mecanico: "DIEGOM", meta: 1230.58 },
-  { mecanico: "FERNANDOS", meta: 1190.58, incluyeAlineacion: true },
-  { mecanico: "JOSELOS", meta: 1071.52 },
+  { mecanico: "FERNANDOS", meta: 1430.58, incluyeAlineacion: true },
+  { mecanico: "JOSELOS", meta: 700.52 },
   { mecanico: "YONG", meta: 1932.0 }
 ];
 

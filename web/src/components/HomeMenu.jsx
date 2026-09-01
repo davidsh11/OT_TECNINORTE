@@ -21,10 +21,10 @@ function availableVacationDays(record) {
 }
 const MECHANIC_GOALS = {
   ANGELF: 2102.49,
-  ARMANDOA: 1953.87,
+  ARMANDOA: 2102.49,
   DIEGOM: 1230.58,
-  FERNANDOS: 1190.58,
-  JOSELOS: 1071.52,
+  FERNANDOS: 1430.58,
+  JOSELOS: 700.52,
   YONG: 1932.0
 };
 
