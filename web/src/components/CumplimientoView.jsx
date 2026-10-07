@@ -7,7 +7,7 @@ const METAS = [
   { mecanico: "DIEGOM", meta: 1230.58 },
   { mecanico: "FERNANDOS", meta: 1430.58, incluyeAlineacion: true },
   { mecanico: "JOSELOS", meta: 700.52 },
-  { mecanico: "YONG", meta: 1932.0 }
+  { mecanico: "YONG", meta: 2000.00 }
 ];
 
 function formatMoney(value) {

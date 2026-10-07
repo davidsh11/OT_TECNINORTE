@@ -20,6 +20,7 @@ import UtilidadView from "./components/UtilidadView";
 import VacacionesView from "./components/VacacionesView";
 import { clienteFields, initialCabecera, vehiculoFields } from "./constants/formFields";
 import { users } from "./constants/users";
+import { normalizeSessionUser } from "./utils/sessionUser";
 import { saveOtMedia } from "./utils/localOtMedia";
 import { fileToPdfDataUrl, signatureToDataUrl, writePdfTab } from "./utils/pdf";
 import "./App.css";
@@ -35,7 +36,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     const savedUsername = localStorage.getItem("tecninorte-user");
     const savedRole = localStorage.getItem("tecninorte-role");
-    return (
+    return normalizeSessionUser(
       JSON.parse(localStorage.getItem("tecninorte-user-data") || "null") ||
       users.find((user) => user.username === savedUsername) ||
       users.find((user) => user.role === savedRole) ||
@@ -405,7 +406,8 @@ export default function App() {
     }
   };
 
-  const login = (user, token) => {
+  const login = (sessionUser, token) => {
+    const user = normalizeSessionUser(sessionUser);
     localStorage.setItem("tecninorte-session-token", token || "");
     localStorage.setItem("tecninorte-user", user.username);
     localStorage.setItem("tecninorte-role", user.role);
@@ -525,7 +527,7 @@ export default function App() {
               onGuardar={guardarOT}
             />
           ) : safeActiveView === "buscar" ? (
-            <BuscarOTView api={API} />
+            <BuscarOTView api={API} currentUser={currentUser} />
           ) : safeActiveView === "datosClientes" ? (
             <DatosClientesView api={API} />
           ) : safeActiveView === "historial" ? (

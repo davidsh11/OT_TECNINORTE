@@ -463,7 +463,7 @@ const DEFAULT_SYSTEM_USERS = [
   { username: "fernandos", password: "1234", role: "mecanico", name: "FERNANDOS", mechanicId: "FERNANDOS", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "diegom", password: "1234", role: "mecanico", name: "DIEGOM", mechanicId: "DIEGOM", allowedViews: ["inicio", "crear", "taller", "seguimiento"], canAssignOt: false },
   { username: "jorges", password: "1234", role: "mecanico", name: "JORGES", mechanicId: "JORGES", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
-  { username: "joselos", password: "1234", role: "mecanico", name: "JOSELOS", mechanicId: "JOSELOS", allowedViews: ["inicio", "crear", "taller", "seguimiento"], canAssignOt: false },
+  { username: "joselos", password: "1234", role: "mecanico", name: "JOSELOS", mechanicId: "JOSELOS", allowedViews: ["inicio", "crear", "buscar", "taller", "seguimiento"], canAssignOt: false },
   { username: "yong", password: "1234", role: "mecanico", name: "YONG", mechanicId: "YONG", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "armandoa", password: "1234", role: "mecanico", name: "ARMANDOA", mechanicId: "ARMANDOA", allowedViews: ["inicio", "taller", "seguimiento"], canAssignOt: false },
   { username: "admin", password: "admin", role: "admin", name: "Administrador", allowedViews: ["inicio", "crear", "buscar", "datosClientes", "historial", "taller", "seguimiento", "cierre", "cobranza", "salida", "reportes", "cumplimiento", "utilidad", "vacaciones", "usuarios"], canAssignOt: true }
@@ -487,6 +487,10 @@ function publicSystemUser(user) {
     views.add("seguimiento");
     if (["DIEGOM", "JOSELOS"].includes(upperText(safeUser.name || safeUser.mechanicId))) {
       views.add("crear");
+    }
+    if (upperText(safeUser.mechanicId) === "JOSELOS" || normalizeText(safeUser.username) === "joselos") {
+      views.add("buscar");
+      safeUser.canAssignOt = false;
     }
     safeUser.allowedViews = Array.from(views);
   }
@@ -2192,6 +2196,51 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
   } catch (e) {
     console.error("PATCH /api/ot/:id/taller fallo:", e);
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.delete("/api/ot/:id", requireAdminSession, async (req, res) => {
+  try {
+    const { db } = getFirebase();
+    const id = String(req.params.id);
+    if (req.body?.confirmId !== id) return res.status(400).json({ ok: false, error: "Confirme el numero de OT para eliminarla" });
+    const ref = db.collection(OT_COLLECTION).doc(id);
+    await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists) throw Object.assign(new Error("OT no encontrada"), { status: 404 });
+      const details = await transaction.get(ref.collection("detalle"));
+      if (details.size > 499) throw Object.assign(new Error("La OT tiene demasiados detalles para eliminarla en una sola operacion"), { status: 409 });
+      details.docs.forEach((doc) => transaction.delete(doc.ref));
+      transaction.delete(ref);
+    });
+    res.json({ ok: true, otId: id });
+  } catch (e) {
+    console.error("DELETE /api/ot/:id fallo:", e);
+    res.status(e.status || 500).json({ ok: false, error: e.status ? e.message : "No se pudo eliminar la OT" });
+  }
+});
+
+app.patch("/api/ot/:id/mecanico", requireAdminSession, async (req, res) => {
+  try {
+    const { db } = getFirebase();
+    const id = String(req.params.id);
+    const mechanic = upperText(req.body?.MecanicoResponsable);
+    const validMechanic = DEFAULT_SYSTEM_USERS.some((user) => user.role === "mecanico" && user.mechanicId === mechanic);
+    if (!validMechanic) return res.status(400).json({ ok: false, error: "Seleccione un mecanico valido" });
+    const ref = db.collection(OT_COLLECTION).doc(id);
+    await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists) throw Object.assign(new Error("OT no encontrada"), { status: 404 });
+      transaction.update(ref, {
+        MecanicoResponsable: mechanic,
+        ReasignadoPor: req.sessionUser.username,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    res.json({ ok: true, otId: id, MecanicoResponsable: mechanic });
+  } catch (e) {
+    console.error("PATCH /api/ot/:id/mecanico fallo:", e);
+    res.status(e.status || 500).json({ ok: false, error: e.status ? e.message : "No se pudo reasignar la OT" });
   }
 });
 

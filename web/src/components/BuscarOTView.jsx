@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { mechanics } from "../constants/users";
 import { getOtMedia } from "../utils/localOtMedia";
 import { writePdfTab, writePreCompraPdfTab } from "../utils/pdf";
 
@@ -16,7 +17,11 @@ function getProcessStatus(ot) {
 
 const PAGE_SIZE = 6;
 
-export default function BuscarOTView({ api }) {
+export default function BuscarOTView({ api, currentUser }) {
+  const isAdmin = currentUser?.role === "admin";
+  const [saving, setSaving] = useState(false);
+  const [mechanic, setMechanic] = useState("");
+  const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [ordenes, setOrdenes] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -50,6 +55,8 @@ export default function BuscarOTView({ api }) {
       const res = await axios.get(`${api}/api/ot/${otId}`);
       const localMedia = await getOtMedia(otId);
       setSelected(res.data.ot);
+      setMechanic(res.data.ot.MecanicoResponsable || "");
+      setMessage("");
       setDetalle(res.data.detalle || []);
       setMedia(localMedia);
     } catch (requestError) {
@@ -57,6 +64,35 @@ export default function BuscarOTView({ api }) {
       setError("No se pudo cargar el detalle de la OT.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const administrarOT = async (remove = false) => {
+    if (!isAdmin || !selected || saving || loading) return;
+    const id = selected.ID;
+    if (remove && window.prompt(`Eliminar definitivamente la OT ${id} (${selected.Placa || "sin placa"}) y sus detalles. Esta accion no se puede deshacer. Escriba el numero de OT para confirmar:`) !== id) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    const config = { headers: { Authorization: `Bearer ${localStorage.getItem("tecninorte-session-token") || ""}` } };
+    try {
+      if (remove) {
+        await axios.delete(`${api}/api/ot/${encodeURIComponent(id)}`, { ...config, data: { confirmId: id } });
+        setSelected(null);
+        setDetalle([]);
+        setMedia(null);
+        await cargarOrdenes();
+        setMessage(`OT ${id} eliminada.`);
+      } else {
+        const response = await axios.patch(`${api}/api/ot/${encodeURIComponent(id)}/mecanico`, { MecanicoResponsable: mechanic }, config);
+        setSelected((ot) => ({ ...ot, MecanicoResponsable: response.data.MecanicoResponsable }));
+        setOrdenes((items) => items.map((ot) => ot.ID === id ? { ...ot, MecanicoResponsable: response.data.MecanicoResponsable } : ot));
+        setMessage(`OT ${id} asignada a ${response.data.MecanicoResponsable}.`);
+      }
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || "No se pudo guardar el cambio. Intente nuevamente.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -125,7 +161,8 @@ export default function BuscarOTView({ api }) {
         </button>
       </div>
 
-      {error ? <p className="error-state">{error}</p> : null}
+      {error ? <p className="error-state" role="alert">{error}</p> : null}
+      {message ? <p role="status">{message}</p> : null}
 
       <div className="ot-browser">
         <div className="ot-list">
@@ -138,6 +175,7 @@ export default function BuscarOTView({ api }) {
               className={`ot-row ${selected?.ID === ot.ID ? "active" : ""}`}
               type="button"
               key={ot.ID}
+              disabled={saving || loading}
               onClick={() => cargarDetalle(ot.ID)}
             >
               <span>
@@ -195,6 +233,24 @@ export default function BuscarOTView({ api }) {
                   </button>
                 </div>
               </div>
+
+              {isAdmin ? (
+                <fieldset disabled={saving || loading} className="admin-ot-actions">
+                  <legend>Administrar OT</legend>
+                  <label htmlFor="ot-mechanic">Mecanico responsable</label>
+                  <select id="ot-mechanic" value={mechanic} onChange={(event) => setMechanic(event.target.value)}>
+                    <option value="">Seleccione un mecanico</option>
+                    {mechanics.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                  <button type="button" disabled={!mechanic || mechanic === selected.MecanicoResponsable} onClick={() => administrarOT()}>
+                    Guardar asignacion
+                  </button>
+                  <button type="button" className="delete-ot-button" onClick={() => administrarOT(true)}>
+                    Eliminar OT
+                  </button>
+                  {saving ? <span role="status">Guardando cambios...</span> : null}
+                </fieldset>
+              ) : null}
 
               <div className="read-grid">
                 <span>CL</span>

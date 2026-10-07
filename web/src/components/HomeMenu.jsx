@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 
 const VACATION_CACHE_TTL = 15 * 60 * 1000;
@@ -25,7 +25,7 @@ const MECHANIC_GOALS = {
   DIEGOM: 1230.58,
   FERNANDOS: 1430.58,
   JOSELOS: 700.52,
-  YONG: 1932.0
+  YONG: 2000.00
 };
 
 function currentMonthRange() {
