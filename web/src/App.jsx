@@ -535,7 +535,7 @@ export default function App() {
           ) : safeActiveView === "taller" ? (
             <TallerOTView api={API} currentUser={currentUser} />
           ) : safeActiveView === "seguimiento" ? (
-            <SeguimientoMecanicosView api={API} />
+            <SeguimientoMecanicosView api={API} currentUser={currentUser} />
           ) : safeActiveView === "cierre" ? (
             <CierreOTView api={API} />
           ) : safeActiveView === "cobranza" ? (

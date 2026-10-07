@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import BloqueosOTPanel, { BlockBadges } from "./BloqueosOTPanel";
+import { matchesBlockFilters } from "../utils/bloqueos";
 import { mechanics } from "../constants/users";
 
 const statusLabels = {
   todos: "Todas",
+  bloqueadas: "Bloqueadas",
   sin_asignar: "Sin asignar",
   pendiente: "Pendientes",
   realizando: "Realizando",
@@ -46,12 +49,14 @@ function buildMechanicRows(apiMechanics) {
   });
 }
 
-export default function SeguimientoMecanicosView({ api }) {
+export default function SeguimientoMecanicosView({ api, currentUser }) {
   const [data, setData] = useState({ resumen: {}, mecanicos: [], ordenes: [], pendientesSalida: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [mechanicFilter, setMechanicFilter] = useState("todos");
+  const [reasonFilter, setReasonFilter] = useState("todos");
+  const [selectedOt, setSelectedOt] = useState(null);
   const [search, setSearch] = useState("");
 
   const cargarSeguimiento = async () => {
@@ -94,7 +99,7 @@ export default function SeguimientoMecanicosView({ api }) {
     const query = search.trim().toLowerCase();
 
     return (data.ordenes || []).filter((ot) => {
-      if (statusFilter !== "todos" && ot.EstadoSeguimiento !== statusFilter) return false;
+      if (!matchesBlockFilters(ot, statusFilter, reasonFilter)) return false;
       if (mechanicFilter !== "todos" && ot.MecanicoResponsable !== mechanicFilter) return false;
       if (!query) return true;
 
@@ -109,7 +114,7 @@ export default function SeguimientoMecanicosView({ api }) {
         ot.Estado
       ].some((value) => String(value || "").toLowerCase().includes(query));
     });
-  }, [data.ordenes, mechanicFilter, search, statusFilter]);
+  }, [data.ordenes, mechanicFilter, search, statusFilter, reasonFilter]);
 
   return (
     <section className="panel tracking-panel">
@@ -148,6 +153,10 @@ export default function SeguimientoMecanicosView({ api }) {
         </article>
       </div>
 
+      <div className="block-counters">
+        <button type="button" className="block-repuestos" onClick={() => { setStatusFilter("bloqueadas"); setReasonFilter("repuestos"); }}><span>Esperando repuestos</span><strong>{data.resumen.esperandoRepuestos || 0}</strong><small>Compra o llegada pendiente</small></button>
+        <button type="button" className="block-autorizacion" onClick={() => { setStatusFilter("bloqueadas"); setReasonFilter("autorizacion"); }}><span>Esperando autorización</span><strong>{data.resumen.esperandoAutorizacion || 0}</strong><small>Incluye rechazos pendientes de decisión</small></button>
+      </div>
       <section className="exit-chart-panel">
         <div className="exit-chart-copy">
           <p className="eyebrow">Salida de taller</p>
@@ -168,7 +177,7 @@ export default function SeguimientoMecanicosView({ api }) {
         </div>
         <div className="exit-approved-list">
           {(data.pendientesSalida || []).slice(0, 5).map((ot) => (
-            <article key={ot.ID}>
+            <article key={`${ot.ID}:${ot.MecanicoResponsable}:${ot.AreaTrabajo || "mecanica"}`}>
               <strong>{ot.Placa || "Sin placa"}</strong>
               <span>OT {ot.ID}</span>
               <small>{formatDate(ot.FechaCobro || ot.FechaPagoPendienteEmpresa || ot.FechaEntrega)}</small>
@@ -229,11 +238,13 @@ export default function SeguimientoMecanicosView({ api }) {
             onClick={() => setStatusFilter(status)}
             key={status}
           >
-            {label}
+            {label}{status === "bloqueadas" ? ` (${data.resumen.bloqueadas || 0})` : ""}
           </button>
         ))}
       </div>
 
+      <label className="block-reason-filter">Motivo de bloqueo<select value={reasonFilter} onChange={(e) => setReasonFilter(e.target.value)}><option value="todos">Todos los motivos</option><option value="repuestos">Repuestos</option><option value="autorizacion">Autorización del cliente</option></select></label>
+      {selectedOt ? <section className="blocks-inspection" aria-label={`Bloqueos OT ${selectedOt}`}><div className="section-heading"><h3>OT {selectedOt}</h3><button type="button" onClick={() => setSelectedOt(null)}>Cerrar detalle</button></div><BloqueosOTPanel key={selectedOt} api={api} otId={selectedOt} currentUser={currentUser} /></section> : null}
       <div className="tracking-table">
         {loading && filteredOrders.length === 0 ? <p className="empty-state">Cargando seguimiento...</p> : null}
         {!loading && filteredOrders.length === 0 ? (
@@ -255,6 +266,8 @@ export default function SeguimientoMecanicosView({ api }) {
               <small>{formatDate(ot.FechaRecepcion)}</small>
             </div>
             <span className={`tracking-status ${ot.EstadoSeguimiento}`}>{statusText(ot.EstadoSeguimiento)}</span>
+            <BlockBadges blocks={ot.BloqueosActivos} />
+            {(["admin", "cobranza", "jefe_taller"].includes(currentUser?.role) || [ot.MecanicoResponsable, ot.MecanicoAlineacionBalanceo, ot.MecanicoCambioAceite].includes(currentUser?.mechanicId || currentUser?.name)) ? <button type="button" onClick={() => setSelectedOt(ot.ID)}>Ver bloqueos</button> : null}
           </article>
         ))}
       </div>

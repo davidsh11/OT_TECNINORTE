@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import BloqueosOTPanel from "./BloqueosOTPanel";
 import { mechanics } from "../constants/users";
 import { getOtMedia } from "../utils/localOtMedia";
 import { writePdfTab, writePreCompraPdfTab } from "../utils/pdf";
@@ -252,6 +253,7 @@ export default function BuscarOTView({ api, currentUser }) {
                 </fieldset>
               ) : null}
 
+              {["admin", "cobranza", "jefe_taller"].includes(currentUser?.role) ? <BloqueosOTPanel key={selected.ID} api={api} otId={selected.ID} currentUser={currentUser} /> : null}
               <div className="read-grid">
                 <span>CL</span>
                 <strong>{selected.CL || "-"}</strong>

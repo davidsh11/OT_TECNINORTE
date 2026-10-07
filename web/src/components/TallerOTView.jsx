@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import axios from "axios";
 import { mechanics } from "../constants/users";
+import BloqueosOTPanel, { BlockBadges } from "./BloqueosOTPanel";
 import TrabajoRealizadoForm from "./TrabajoRealizadoForm";
 
 const emptyTaller = {
@@ -412,7 +413,7 @@ export default function TallerOTView({ api, currentUser }) {
       }
     } catch (requestError) {
       console.error(requestError);
-      setError("No se pudieron guardar los datos de taller.");
+      setError(requestError.response?.data?.error || "No se pudieron guardar los datos de taller.");
     } finally {
       setSaving(false);
     }
@@ -463,6 +464,7 @@ export default function TallerOTView({ api, currentUser }) {
                 <span>
                   <strong>{ot.Placa || "Sin placa"}</strong>
                   <WorkshopStatusBadge status={status} />
+                  <BlockBadges blocks={ot.BloqueosActivos} />
                   <small>{formatDate(ot.FechaRecepcion) || "Sin fecha"}</small>
                 </span>
               </button>
@@ -490,6 +492,7 @@ export default function TallerOTView({ api, currentUser }) {
         </p>
       ) : (
         <>
+          <BloqueosOTPanel key={selected.ID} api={api} otId={selected.ID} currentUser={currentUser} area={isSelectedAlignmentTask ? "alineacion_balanceo" : isSelectedOilTask ? "cambio_aceite" : "mecanica"} />
           <div className="workshop-summary">
             <div>
               <p className="eyebrow">OT {selected.ID}</p>

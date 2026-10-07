@@ -11,13 +11,14 @@ function setup({ exists = true, size = 2 } = {}) {
   const db = {
     collection: () => ({ doc: () => ref }),
     runTransaction: async (fn) => fn({
-      get: async (target) => target === ref ? { exists } : { size, docs: Array.from({ length: size }, (_, i) => ({ ref: i })) },
+      get: async (target) => target === ref ? { exists, data: () => ({}) } : { size, docs: Array.from({ length: size }, (_, i) => ({ ref: i })) },
       delete: (target) => writes.push(['delete', target]),
       update: (target, data) => writes.push(['update', data])
     })
   };
   const catalogName = source.match(/const (\w+) = \[\s*\{ username: "recepcion"/)[1];
   const context = vm.createContext({
+    activeBlocks: require("../bloqueos").activeBlocks,
     Buffer, crypto, process: { env: { SESSION_SECRET: 'test-secret' } },
     console: { error() {} }, getFirebase: () => ({ db }), OT_COLLECTION: 'test',
     admin: { firestore: { FieldValue: { serverTimestamp: () => 'timestamp' } } },

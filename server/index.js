@@ -6,6 +6,8 @@ const crypto = require("crypto");
 const { v4: uuidv4 } = require("uuid");
 const { admin, getFirebase, initFirebase, OT_COLLECTION } = require("./firebase");
 
+const { registerBlockRoutes, activeBlocks, blockCounts } = require("./bloqueos");
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "25mb" }));
@@ -344,6 +346,7 @@ function trackingOtPayload(ot) {
     MecanicoResponsable: mechanic,
     Estado: upperText(ot.Estado || "RECIBIDO"),
     EstadoSeguimiento: status,
+    BloqueosActivos: activeBlocks(ot),
     FinalizadaMesActual: isCurrentMonthDate(ot.FechaEntrega),
     FechaRecepcion: displayDate(ot.FechaRecepcion),
     FechaInicioTrabajo: displayDate(ot.FechaInicioTrabajo),
@@ -1235,6 +1238,8 @@ app.patch("/api/clientes-datos", async (req, res) => {
   }
 });
 
+registerBlockRoutes(app, { getFirebase, OT_COLLECTION, requireSession, getSystemUser, publicSystemUser });
+
 app.get("/api/ot", async (req, res) => {
   try {
     const { db } = getFirebase();
@@ -1253,7 +1258,7 @@ app.get("/api/ot", async (req, res) => {
     // La busqueda se aplica en memoria sobre varios campos. Si se limita la
     // consulta antes de filtrar, las OT antiguas nunca pueden aparecer aunque
     // coincidan con la placa, cliente o ID buscado.
-    if (!search) query = query.limit(limit);
+    if (!search && !assignedTo && !unassigned) query = query.limit(limit);
 
     const snapshot = await query.get();
 
@@ -1337,11 +1342,9 @@ app.get("/api/ot", async (req, res) => {
 app.get("/api/ot/seguimiento", async (req, res) => {
   try {
     const { db } = getFirebase();
-    const limit = Math.min(Number(req.query.limit) || 500, 800);
     const snapshot = await db
       .collection(OT_COLLECTION)
       .orderBy("FechaRecepcion", "desc")
-      .limit(limit)
       .get();
 
     const baseOrdenes = snapshot.docs.map((doc) => ({
@@ -1443,6 +1446,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
     res.json({
       ok: true,
       resumen: {
+        ...blockCounts(baseOrdenes),
         ingresoTaller: activas.length,
         sinAsignar: activas.filter((ot) => ot.EstadoSeguimiento === "sin_asignar").length,
         asignadas: activas.filter((ot) => ot.MecanicoResponsable).length,
@@ -1451,7 +1455,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
         pendientesSalida: pendientesSalida.length
       },
       mecanicos,
-      ordenes: activas,
+      ordenes: ordenes.filter((ot) => !ot.SalidaAutorizada || activeBlocks(ot).length),
       pendientesSalida
     });
   } catch (e) {
@@ -1820,6 +1824,16 @@ app.get("/api/reports/finance", async (req, res) => {
   }
 });
 
+async function updateOtWithBlockCheck(db, ref, changes, areas = null) {
+  await db.runTransaction(async (tx) => {
+    const snapshot = await tx.get(ref);
+    if (!snapshot.exists) throw Object.assign(new Error("OT no encontrada"), { status: 404 });
+    const blocking = activeBlocks(snapshot.data()).some((block) => !areas || areas.includes(block.area));
+    if (blocking) throw Object.assign(new Error("Hay bloqueos pendientes. Revise la respuesta de Cobranza antes de continuar este trabajo"), { status: 409 });
+    tx.update(ref, changes);
+  });
+}
+
 app.patch("/api/ot/:id/cobro", async (req, res) => {
   try {
     const { db } = getFirebase();
@@ -1892,7 +1906,7 @@ app.patch("/api/ot/:id/pago", async (req, res) => {
     const hasPendingPayment = pendingCompanyPayment || partialPendingPayment;
     const now = new Date().toISOString();
 
-    await otRef.update({
+    await updateOtWithBlockCheck(db, otRef, {
       ValorRepuestos: valorRepuestos,
       EsEmpresa: isCompany,
       PagoPendienteEmpresa: pendingCompanyPayment,
@@ -1911,7 +1925,7 @@ app.patch("/api/ot/:id/pago", async (req, res) => {
     res.json({ ok: true, otId: id });
   } catch (e) {
     console.error("PATCH /api/ot/:id/pago fallo:", e);
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: e.message });
   }
 });
 
@@ -1936,7 +1950,7 @@ app.patch("/api/ot/:id/salida", async (req, res) => {
       });
     }
 
-    await otRef.update({
+    await updateOtWithBlockCheck(db, otRef, {
       SalidaAutorizada: true,
       FechaSalida: new Date().toISOString(),
       Estado: "FINALIZADO",
@@ -1946,7 +1960,7 @@ app.patch("/api/ot/:id/salida", async (req, res) => {
     res.json({ ok: true, otId: id });
   } catch (e) {
     console.error("PATCH /api/ot/:id/salida fallo:", e);
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: e.message });
   }
 });
 
@@ -1986,11 +2000,11 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
 
     if (isAlignmentArea) {
       const startDate = currentOt.FechaInicioAlineacionBalanceo || new Date().toISOString();
-      await otRef.update({
+      await updateOtWithBlockCheck(db, otRef, {
         FechaInicioAlineacionBalanceo: startDate,
         EstadoAlineacionBalanceo: "REALIZANDO",
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      }, [isAlignmentArea ? "alineacion_balanceo" : "cambio_aceite"]);
 
       return res.json({
         ok: true,
@@ -2002,11 +2016,11 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
 
     if (isOilChangeArea) {
       const startDate = currentOt.FechaInicioCambioAceite || new Date().toISOString();
-      await otRef.update({
+      await updateOtWithBlockCheck(db, otRef, {
         FechaInicioCambioAceite: startDate,
         EstadoCambioAceite: "REALIZANDO",
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      }, [isAlignmentArea ? "alineacion_balanceo" : "cambio_aceite"]);
 
       return res.json({
         ok: true,
@@ -2018,12 +2032,12 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
 
     const startDate = currentOt.FechaInicioTrabajo || new Date().toISOString();
 
-    await otRef.update({
+    await updateOtWithBlockCheck(db, otRef, {
       Estado: "REALIZANDO",
       FechaInicioTrabajo: startDate,
       MecanicoInicioTrabajo: assignedMechanic,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    }, ["mecanica"]);
 
     res.json({
       ok: true,
@@ -2033,7 +2047,7 @@ app.patch("/api/ot/:id/inicio-trabajo", async (req, res) => {
     });
   } catch (e) {
     console.error("PATCH /api/ot/:id/inicio-trabajo fallo:", e);
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: e.message });
   }
 });
 
@@ -2091,13 +2105,13 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
 
       const finishDate = cabecera.FechaAlineacionBalanceo || new Date().toISOString();
 
-      await otRef.update({
+      await updateOtWithBlockCheck(db, otRef, {
         MecanicoAlineacionBalanceo: "FERNANDOS",
         TrabajoAlineacionBalanceo: sentenceText(cabecera.TrabajoAlineacionBalanceo),
         FechaAlineacionBalanceo: upperText(finishDate),
         EstadoAlineacionBalanceo: "FINALIZADO",
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      }, [isAlignmentArea ? "alineacion_balanceo" : "cambio_aceite"]);
 
       return res.json({ ok: true, otId: id });
     }
@@ -2113,14 +2127,14 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
 
       const finishDate = cabecera.FechaCambioAceite || new Date().toISOString();
 
-      await otRef.update({
+      await updateOtWithBlockCheck(db, otRef, {
         MecanicoCambioAceite: "JOSELOS",
         AceiteSolicitado: sentenceText(cabecera.AceiteSolicitado || currentOt.AceiteSolicitado),
         TrabajoCambioAceite: sentenceText(cabecera.TrabajoCambioAceite),
         FechaCambioAceite: upperText(finishDate),
         EstadoCambioAceite: "FINALIZADO",
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      }, [isAlignmentArea ? "alineacion_balanceo" : "cambio_aceite"]);
 
       return res.json({ ok: true, otId: id });
     }
@@ -2190,12 +2204,12 @@ app.patch("/api/ot/:id/taller", async (req, res) => {
       }
     }
 
-    await otRef.update(updatePayload);
+    await updateOtWithBlockCheck(db, otRef, updatePayload, ["mecanica", ...(alignmentWork ? ["alineacion_balanceo"] : []), ...(oilWork ? ["cambio_aceite"] : [])]);
 
     res.json({ ok: true, otId: id });
   } catch (e) {
     console.error("PATCH /api/ot/:id/taller fallo:", e);
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: e.message });
   }
 });
 
@@ -2208,6 +2222,7 @@ app.delete("/api/ot/:id", requireAdminSession, async (req, res) => {
     await db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(ref);
       if (!snapshot.exists) throw Object.assign(new Error("OT no encontrada"), { status: 404 });
+      if (activeBlocks(snapshot.data()).length) throw Object.assign(new Error("Resuelva los bloqueos antes de eliminar la OT"), { status: 409 });
       const details = await transaction.get(ref.collection("detalle"));
       if (details.size > 499) throw Object.assign(new Error("La OT tiene demasiados detalles para eliminarla en una sola operacion"), { status: 409 });
       details.docs.forEach((doc) => transaction.delete(doc.ref));

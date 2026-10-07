@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import BloqueosGestionView from "./BloqueosGestionView";
 
 function formatDate(value) {
   if (!value) return "";
@@ -134,7 +135,7 @@ export default function CobranzaOTView({ api }) {
       await cargarPendientes();
     } catch (requestError) {
       console.error(requestError);
-      setError("No se pudo registrar el estado de pago de la OT.");
+      setError(requestError.response?.data?.error || "No se pudo registrar el estado de pago de la OT.");
     } finally {
       setSaving(false);
     }
@@ -155,6 +156,7 @@ export default function CobranzaOTView({ api }) {
 
   return (
     <section className="panel search-panel">
+      <BloqueosGestionView api={api} />
       <div className="section-heading">
         <div>
           <p className="eyebrow">Cobranza</p>

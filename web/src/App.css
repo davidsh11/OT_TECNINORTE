@@ -3053,3 +3053,44 @@ button:disabled {
 .admin-ot-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0; padding: 16px; border: 1px solid #d7dde5; border-radius: 12px; }
 .admin-ot-actions select { max-width: 100%; padding: 10px; }
 .admin-ot-actions .delete-ot-button { background: #b91c1c; color: white; }
+/* Bloqueos de OT: el color complementa el motivo escrito. */
+.blocks-panel { margin: 20px 0; padding: 18px; border: 1px solid #dbe3ef; border-radius: 14px; background: #fff; min-width: 0; }
+.block-list { display: grid; gap: 16px; margin-top: 16px; }
+.block-card { padding: 18px; border: 1px solid; border-radius: 12px; overflow-wrap: anywhere; }
+.block-repuestos { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+.block-autorizacion { background: #faf5ff; border-color: #d8b4fe; color: #6b21a8; }
+.block-card-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.block-card p { margin: 10px 0; }
+.block-info { display: grid; grid-template-columns: minmax(120px, 1fr) 3fr; gap: 8px 16px; margin: 16px 0; }
+.block-info dt { font-weight: 700; }
+.block-info dd { margin: 0; white-space: pre-wrap; }
+.block-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 12px 0; }
+.block-fields label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; }
+.block-fields input, .block-fields select, .block-fields textarea, .block-reason-filter select { width: 100%; min-width: 0; padding: 10px; border: 1px solid #b9c8dc; border-radius: 8px; background: white; color: #102b50; font: inherit; }
+.block-fields textarea { min-height: 75px; resize: vertical; }
+.block-wide { grid-column: 1 / -1; }
+.block-fields .block-checkbox { flex-direction: row; align-items: center; }
+.block-checkbox input { width: auto; }
+.block-management fieldset, .block-create fieldset { min-width: 0; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; margin-top: 12px; }
+.block-rejection { padding: 10px; background: white; border-left: 4px solid #7e22ce; font-weight: 700; }
+.block-history { margin-top: 14px; }
+.block-history li { margin: 12px 0; padding: 10px; background: #fff; border-radius: 8px; }
+.block-history li span { display: block; margin-top: 5px; white-space: pre-wrap; }
+.block-counters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 18px 0; }
+.block-counters button { display: grid; gap: 8px; text-align: left; border: 1px solid; border-radius: 12px; padding: 18px; }
+.block-counters strong { font-size: 30px; }
+.block-counters .block-repuestos { background: #fff7ed; color: #9a3412; border-color: #fdba74; }
+.block-counters .block-autorizacion { background: #faf5ff; color: #6b21a8; border-color: #d8b4fe; }
+.block-badges { display: grid; gap: 8px; min-width: 0; }
+.block-summary { display: grid; gap: 5px; border: 1px solid; border-radius: 8px; padding: 10px; white-space: normal; overflow-wrap: anywhere; }
+.block-reason-filter { display: block; max-width: 340px; margin: 12px 0; }
+.tracking-row:has(.block-badges) { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+.tracking-row > .block-badges { grid-column: 1 / -1; }
+.blocks-inspection { border: 2px solid #dbe3ef; border-radius: 12px; padding: 14px; margin-bottom: 20px; }
+@media (max-width: 700px) {
+  .block-fields, .block-counters { grid-template-columns: minmax(0, 1fr); }
+  .block-info { grid-template-columns: minmax(0, 1fr); }
+  .block-info dd { margin-bottom: 8px; }
+  .blocks-panel, .block-card { padding: 12px; }
+  .tracking-row:has(.block-badges) { grid-template-columns: minmax(0, 1fr); }
+}
