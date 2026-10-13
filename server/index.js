@@ -8,6 +8,9 @@ const { admin, getFirebase, initFirebase, OT_COLLECTION } = require("./firebase"
 
 const { registerBlockRoutes, activeBlocks, blockCounts } = require("./bloqueos");
 
+const { trackingMonthRange } = require("./seguimiento");
+
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "25mb" }));
@@ -514,7 +517,12 @@ function publicSystemUser(user) {
   return safeUser;
 }
 
+let systemUsersReady;
 async function ensureSystemUsers(db) {
+  if (!systemUsersReady) systemUsersReady = initializeSystemUsers(db).catch((error) => { systemUsersReady = null; throw error; });
+  return systemUsersReady;
+}
+async function initializeSystemUsers(db) {
   const collection = db.collection(SYSTEM_USERS_COLLECTION);
   const snapshot = await collection.limit(1).get();
   if (!snapshot.empty) return;
@@ -1260,6 +1268,13 @@ app.get("/api/ot", async (req, res) => {
     // coincidan con la placa, cliente o ID buscado.
     if (!search && !assignedTo && !unassigned) query = query.limit(limit);
 
+    const assignmentFields = ["MecanicoResponsable", "MecanicoAsignado", "MecanicoAsignadoNombre", "MecanicoAlineacionBalanceo", "MecanicoCambioAceite"];
+    if (assignedTo) {
+      const values = [...new Set([assignedTo, upperText(assignedTo)])];
+      query = db.collection(OT_COLLECTION).where(admin.firestore.Filter.or(
+        ...assignmentFields.flatMap((field) => values.map((value) => admin.firestore.Filter.where(field, "==", value)))
+      ));
+    }
     const snapshot = await query.get();
 
     let ordenes = snapshot.docs.map((doc) => ({
@@ -1330,6 +1345,7 @@ app.get("/api/ot", async (req, res) => {
       ordenes = ordenes.filter((ot) => (Boolean(ot.Cobrado) || Boolean(ot.PagoPendienteEmpresa) || Boolean(ot.PagoParcialPendiente)) && !ot.SalidaAutorizada);
     }
 
+    ordenes.sort((a, b) => (readDate(b.FechaRecepcion)?.getTime() || 0) - (readDate(a.FechaRecepcion)?.getTime() || 0));
     ordenes = ordenes.slice(0, limit).map(otListPayload);
 
     res.json({ ok: true, ordenes });
@@ -1342,8 +1358,11 @@ app.get("/api/ot", async (req, res) => {
 app.get("/api/ot/seguimiento", async (req, res) => {
   try {
     const { db } = getFirebase();
+    const monthRange = trackingMonthRange();
     const snapshot = await db
       .collection(OT_COLLECTION)
+      .where("FechaRecepcion", ">=", monthRange.from)
+      .where("FechaRecepcion", "<", monthRange.to)
       .orderBy("FechaRecepcion", "desc")
       .get();
 
@@ -1351,8 +1370,9 @@ app.get("/api/ot/seguimiento", async (req, res) => {
       ID: doc.id,
       ...doc.data()
     }));
+    baseOrdenes.sort((a, b) => (readDate(b.FechaRecepcion)?.getTime() || 0) - (readDate(a.FechaRecepcion)?.getTime() || 0));
     const ordenes = baseOrdenes.flatMap((ot) => {
-      const baseRow = trackingOtPayload(ot);
+      const baseRow = { ...trackingOtPayload(ot), AreasTrabajo: ["mecanica"] };
       const rows = [baseRow];
 
       if (ot.RequiereCambioAceite) {
@@ -1362,6 +1382,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
 
         if (oilMechanic && oilMechanic === primaryMechanic) {
           baseRow.AreaTrabajo = baseRow.AreaTrabajo ? `${baseRow.AreaTrabajo} + CAMBIO DE ACEITE` : "MECANICA + CAMBIO DE ACEITE";
+          baseRow.AreasTrabajo.push("cambio_aceite");
           baseRow.AceiteSolicitado = sentenceText(ot.AceiteSolicitado);
           if (baseRow.EstadoSeguimiento === "finalizada" && oilStatus !== "finalizada") {
             baseRow.EstadoSeguimiento = oilStatus;
@@ -1373,6 +1394,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
             ...trackingOtPayload(ot),
             MecanicoResponsable: oilMechanic || "JOSELOS",
             AreaTrabajo: "CAMBIO DE ACEITE",
+            AreasTrabajo: ["cambio_aceite"],
             EstadoSeguimiento: oilStatus,
             FinalizadaMesActual: isCurrentMonthDate(ot.FechaCambioAceite),
             FechaInicioTrabajo: displayDate(ot.FechaInicioCambioAceite),
@@ -1390,6 +1412,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
 
         if (alignmentMechanic && alignmentMechanic === primaryMechanic) {
           baseRow.AreaTrabajo = baseRow.AreaTrabajo ? `${baseRow.AreaTrabajo} + ALINEACION Y BALANCEO` : "MECANICA + ALINEACION Y BALANCEO";
+          baseRow.AreasTrabajo.push("alineacion_balanceo");
           baseRow.ObservacionAlineacionBalanceo = sentenceText(ot.ObservacionAlineacionBalanceo);
           if (baseRow.EstadoSeguimiento === "finalizada" && alignmentStatus !== "finalizada") {
             baseRow.EstadoSeguimiento = alignmentStatus;
@@ -1401,6 +1424,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
             ...trackingOtPayload(ot),
             MecanicoResponsable: alignmentMechanic || "FERNANDOS",
             AreaTrabajo: "ALINEACION Y BALANCEO",
+            AreasTrabajo: ["alineacion_balanceo"],
             EstadoSeguimiento: alignmentStatus,
             FinalizadaMesActual: isCurrentMonthDate(ot.FechaAlineacionBalanceo),
             FechaInicioTrabajo: displayDate(ot.FechaInicioAlineacionBalanceo),
@@ -1411,9 +1435,9 @@ app.get("/api/ot/seguimiento", async (req, res) => {
         }
       }
 
-      return rows;
+      return rows.map((row) => ({ ...row, BloqueosActivos: activeBlocks(ot).filter((block) => row.AreasTrabajo.includes(block.area || "mecanica")) }));
     });
-    const pendientesSalida = ordenes.filter((ot) => !ot.AreaTrabajo && (ot.Cobrado || ot.PagoPendienteEmpresa || ot.PagoParcialPendiente) && !ot.SalidaAutorizada);
+    const pendientesSalida = ordenes.filter((ot) => ot.AreasTrabajo.includes("mecanica") && (ot.Cobrado || ot.PagoPendienteEmpresa || ot.PagoParcialPendiente) && !ot.SalidaAutorizada);
     const activas = ordenes.filter((ot) => !ot.Cobrado && !ot.PagoPendienteEmpresa && !ot.PagoParcialPendiente && !ot.SalidaAutorizada && ot.EstadoSeguimiento !== "finalizada");
     const mecanicosMap = new Map();
 
@@ -1446,7 +1470,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
     res.json({
       ok: true,
       resumen: {
-        ...blockCounts(baseOrdenes),
+        ...blockCounts(activas),
         ingresoTaller: activas.length,
         sinAsignar: activas.filter((ot) => ot.EstadoSeguimiento === "sin_asignar").length,
         asignadas: activas.filter((ot) => ot.MecanicoResponsable).length,
@@ -1455,7 +1479,7 @@ app.get("/api/ot/seguimiento", async (req, res) => {
         pendientesSalida: pendientesSalida.length
       },
       mecanicos,
-      ordenes: ordenes.filter((ot) => !ot.SalidaAutorizada || activeBlocks(ot).length),
+      ordenes: activas,
       pendientesSalida
     });
   } catch (e) {
@@ -1494,11 +1518,11 @@ app.get("/api/historial", async (req, res) => {
     const dateFrom = req.query.dateFrom ? new Date(`${req.query.dateFrom}T00:00:00`) : null;
     const dateTo = req.query.dateTo ? new Date(`${req.query.dateTo}T23:59:59`) : null;
     const limit = Math.min(Number(req.query.limit) || 150, 300);
-    const snapshot = await db
-      .collection(OT_COLLECTION)
-      .orderBy("FechaRecepcion", "desc")
-      .limit(limit)
-      .get();
+    let historyQuery = db.collection(OT_COLLECTION);
+    if (cl) historyQuery = historyQuery.where("CL", "==", cl);
+    if (placa) historyQuery = historyQuery.where("Placa", "==", placa);
+    if (!cl && !placa) historyQuery = historyQuery.orderBy("FechaRecepcion", "desc").limit(limit);
+    const snapshot = await historyQuery.get();
 
     let ordenes = snapshot.docs.map((doc) => ({
       ID: doc.id,
@@ -1538,6 +1562,8 @@ app.get("/api/historial", async (req, res) => {
       });
     }
 
+    ordenes.sort((a, b) => (readDate(b.FechaRecepcion)?.getTime() || 0) - (readDate(a.FechaRecepcion)?.getTime() || 0));
+    ordenes = ordenes.slice(0, limit);
     const historial = await Promise.all(
       ordenes.map(async (ot) => {
         const detalleSnapshot = await db.collection(OT_COLLECTION).doc(String(ot.ID)).collection("detalle").get();
@@ -2286,6 +2312,7 @@ app.get("/api/ot/:id", async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 
 app.get("/health", (req, res) => {
   try {

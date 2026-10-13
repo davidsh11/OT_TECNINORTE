@@ -136,25 +136,44 @@ test('legacy orders have zero blocks and counters deduplicate OT across work are
  assert.deepEqual(blockCounts([{ID:'a',BloqueosActivos:[{motivo:'repuestos'},{motivo:'repuestos'}]},{ID:'a',BloqueosActivos:[{motivo:'autorizacion'}]},{ID:'b',BloqueosActivos:[{motivo:'autorizacion'}]}]),{bloqueadas:2,esperandoRepuestos:1,esperandoAutorizacion:2});
  assert.equal(canRegister(users.joselos,{MecanicoResponsable:'YONG'},'cambio_aceite'),false);
 });
-test('Seguimiento route includes older blocks, area rows and unique OT counters', async () => {
+test('Seguimiento queries current Ecuador month and excludes finalized areas with accurate blocks', async () => {
   const source=fs.readFileSync(require('node:path').join(__dirname,'../index.js'),'utf8');
-  const orders=[{ID:'1',FechaRecepcion:'2020-01-01',MecanicoResponsable:'YONG',RequiereCambioAceite:true,BloqueosActivos:[{motivo:'repuestos'},{motivo:'autorizacion'}]}, {ID:'2',FechaRecepcion:'2026-10-01',MecanicoResponsable:'ANGELF'}];
-  let handler;
-  const context=vm.createContext({ console, activeBlocks, blockCounts, OT_COLLECTION:'OT',
-    getFirebase:()=>({db:{collection:()=>({orderBy:()=>({get:async()=>({docs:orders.map(o=>({id:o.ID,data:()=>o}))})})})}}),
-    app:{get:(_p,fn)=>{handler=fn;}}
+  const {trackingMonthRange}=require('../seguimiento');
+  const range=trackingMonthRange();
+  const orders=[
+    {ID:'1',FechaRecepcion:range.from,MecanicoResponsable:'YONG',RequiereCambioAceite:true,FechaCambioAceite:range.from,TrabajoCambioAceite:'Listo',BloqueosActivos:[{motivo:'repuestos',area:'mecanica'},{motivo:'autorizacion',area:'mecanica'}]},
+    {ID:'2',FechaRecepcion:range.from,MecanicoResponsable:'ANGELF',Estado:'FINALIZADO',FechaEntrega:range.from,RequiereCambioAceite:true,BloqueosActivos:[{motivo:'repuestos',area:'mecanica'}]},
+    {ID:'old',FechaRecepcion:'2020-01-01T00:00:00.000Z',MecanicoResponsable:'YONG'},
+    {ID:'future',FechaRecepcion:range.to,MecanicoResponsable:'YONG'}
+  ];
+  let handler;const conditions=[];
+  const query={where(field,op,value){conditions.push([field,op,value]);return this;},orderBy(){return this;},async get(){return {docs:orders.filter(o=>conditions.every(([field,op,v])=>op==='>='?o[field]>=v:o[field]<v)).map(o=>({id:o.ID,data:()=>o}))};}};
+  const context=vm.createContext({ console, activeBlocks, blockCounts, trackingMonthRange, OT_COLLECTION:'OT',
+    getFirebase:()=>({db:{collection:()=>query}}),app:{get:(_p,fn)=>{handler=fn;}}
   });
   vm.runInContext(source.slice(source.indexOf('function normalizeText('),source.indexOf('const PRE_COMPRA_REPORT_SECTIONS')),context);
   const start=source.indexOf('app.get("/api/ot/seguimiento",');
   vm.runInContext(source.slice(start,source.indexOf('\napp.',start+1)),context);
   const res={code:200,status(c){this.code=c;return this;},json(data){this.data=data;}};
   await handler({query:{}},res);
-  assert.equal(res.code,200);assert.equal(res.data.resumen.bloqueadas,1);assert.equal(res.data.resumen.esperandoRepuestos,1);assert.equal(res.data.resumen.esperandoAutorizacion,1);
-  assert.equal(res.data.ordenes.filter(o=>o.ID==='1').length,2);
+  assert.equal(res.code,200);assert.equal(conditions.length,2);
+  assert.equal(res.data.resumen.bloqueadas,1);assert.equal(res.data.resumen.esperandoRepuestos,1);assert.equal(res.data.resumen.esperandoAutorizacion,1);
+  assert.equal(res.data.ordenes.length,2);
+  assert(res.data.ordenes.every(o=>o.EstadoSeguimiento!=='finalizada'));
+  assert.equal(res.data.ordenes.find(o=>o.ID==='1').MecanicoResponsable,'YONG');
+  assert.equal(res.data.ordenes.find(o=>o.ID==='2').MecanicoResponsable,'JOSELOS');
+  assert.equal(res.data.ordenes.find(o=>o.ID==='2').BloqueosActivos.length,0);
+});
+test('month boundaries use Ecuador even across UTC midnight and new year',()=>{
+ const {trackingMonthRange}=require('../seguimiento');
+ assert.deepEqual(trackingMonthRange(new Date('2027-01-01T04:59:59Z')),{from:'2026-12-01T05:00:00.000Z',to:'2027-01-01T05:00:00.000Z'});
+ assert.deepEqual(trackingMonthRange(new Date('2027-01-01T05:00:00Z')),{from:'2027-01-01T05:00:00.000Z',to:'2027-02-01T05:00:00.000Z'});
 });
 test('frontend block filters and waiting time support both reasons and legacy orders', async () => {
   const { matchesBlockFilters, waitTime }=await import('../../web/src/utils/bloqueos.js');
   const ot={EstadoSeguimiento:'realizando',BloqueosActivos:[{motivo:'repuestos'},{motivo:'autorizacion'}]};
+  assert(!matchesBlockFilters({...ot,EstadoSeguimiento:'finalizada'},'todos','todos'));
+  assert(!matchesBlockFilters({...ot,EstadoSeguimiento:'finalizada'},'bloqueadas','repuestos'));
   assert(matchesBlockFilters(ot,'bloqueadas','repuestos'));assert(matchesBlockFilters(ot,'bloqueadas','autorizacion'));
   assert(!matchesBlockFilters(ot,'pendiente','todos'));assert(!matchesBlockFilters({},'bloqueadas','todos'));assert(matchesBlockFilters({},'todos','todos'));
   assert.equal(waitTime({creadoEn:'2026-10-01T10:00:00Z',resueltoEn:'2026-10-03T11:00:00Z'}),'2 d\u00edas, 1 h');
@@ -199,4 +218,10 @@ test('reason-only UI supports old running backend using server-approved assigned
  const s=await setup(t);
  const result=await s.call('POST','/api/ot/1/bloqueos','yong',payload);
  assert.equal(result.status,201);assert.equal(result.data.bloqueos[0].mecanico,'YONG');
+});
+test('lightweight polling keeps authorization and responses but omits work details', async(t)=>{
+ const s=await setup(t);await s.create({motivo:'repuestos'});
+ const r=await s.call('GET','/api/ot/1/bloqueos?updatesOnly=true','yong');
+ assert.equal(r.status,200);assert.equal(r.data.bloqueos.length,1);assert.equal(r.data.trabajos,undefined);
+ assert.equal((await s.call('GET','/api/ot/1/bloqueos?updatesOnly=true','recepcion')).status,403);
 });

@@ -40,4 +40,4 @@ Publicar backend y frontend juntos con el mecanismo existente de Render/main. No
 
 ## Alcance
 El estado del trabajo sigue siendo por area (mecanica, alineacion o aceite), como en la app existente. Por eso un bloqueo de un trabajo impide finalizar esa area, no las otras areas independientes. Cerrar un rechazo sin ejecutar requiere que el operador excluya ese trabajo del detalle final; no genera un trabajo aprobado.
-Seguimiento consulta las OT sin el antiguo limite de 800 para no ocultar bloqueos antiguos. Si el volumen crece, conviene paginar y mantener contadores agregados; las consultas actuales favorecen la exactitud sobre el limite anterior.
+Seguimiento consulta en Firestore solo las OT recibidas en el mes actual de America/Guayaquil, desde el inicio del mes incluido hasta el siguiente mes excluido. El detalle excluye areas finalizadas y OT cobradas o habilitadas para salida; los contadores de bloqueos corresponden a las filas activas y no duplican la OT. Los bloqueos se muestran solo en su area.

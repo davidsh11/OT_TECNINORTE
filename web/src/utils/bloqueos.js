@@ -18,10 +18,11 @@ export function waitTime(block, now = Date.now()) {
   const hours = Math.max(0, Math.floor((end - new Date(block.creadoEn).getTime()) / 3600000));
   return hours >= 24 ? `${Math.floor(hours / 24)} días, ${hours % 24} h` : hours ? `${hours} h` : "Menos de 1 h";
 }
-export function loadBlocks(api, otId, signal) {
-  return axios.get(blockUrl(api, otId), { ...blockRequest(), signal });
+export function loadBlocks(api, otId, signal, updatesOnly = false) {
+  return axios.get(blockUrl(api, otId), { ...blockRequest(), signal, params: { updatesOnly } });
 }
 export function matchesBlockFilters(ot, statusFilter, reasonFilter) {
+  if (ot.EstadoSeguimiento === "finalizada" || ot.Cobrado || ot.PagoPendienteEmpresa || ot.PagoParcialPendiente || ot.SalidaAutorizada) return false;
   const blocks = ot.BloqueosActivos || [];
   if (statusFilter === "bloqueadas" && !blocks.length) return false;
   if (statusFilter !== "todos" && statusFilter !== "bloqueadas" && ot.EstadoSeguimiento !== statusFilter) return false;

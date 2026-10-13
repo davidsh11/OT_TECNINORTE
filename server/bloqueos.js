@@ -152,8 +152,14 @@ function registerBlockRoutes(app, { getFirebase, OT_COLLECTION, requireSession, 
     const ref = db.collection(OT_COLLECTION).doc(req.params.id);
     const ot = otData(await ref.get());
     if (!canRead(user, ot)) fail(403, 'No tiene acceso a los bloqueos de esta OT');
-    const [snapshot, details] = await Promise.all([db.collection(collection).where('otId', '==', ot.ID).get(), ref.collection('detalle').get()]);
-    res.json({ ok: true, registroPorMotivo: true, bloqueos: snapshot.docs.map((doc) => doc.data()).sort((a, b) => b.creadoEn.localeCompare(a.creadoEn)), trabajos: workOptions(ot, details.docs.map((doc) => ({ ...doc.data(), ID: doc.id })), user) });
+    const snapshot = await db.collection(collection).where('otId', '==', ot.ID).get();
+    const payload = { ok: true, registroPorMotivo: true, bloqueos: snapshot.docs.map((doc) => doc.data()).sort((a, b) => b.creadoEn.localeCompare(a.creadoEn)) };
+    // Polling needs status only, not the original work detail collection.
+    if (req.query.updatesOnly !== 'true') {
+      const details = await ref.collection('detalle').get();
+      payload.trabajos = workOptions(ot, details.docs.map((doc) => ({ ...doc.data(), ID: doc.id })), user);
+    }
+    res.json(payload);
   }));
   app.get('/api/ot/:id/bloqueos/:blockId/historial', ...secured(async (req, res, db, user) => {
     const otSnapshot = await db.collection(OT_COLLECTION).doc(req.params.id).get();

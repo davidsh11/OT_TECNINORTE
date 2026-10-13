@@ -9,8 +9,7 @@ const statusLabels = {
   bloqueadas: "Bloqueadas",
   sin_asignar: "Sin asignar",
   pendiente: "Pendientes",
-  realizando: "Realizando",
-  finalizada: "Finalizadas"
+  realizando: "Realizando"
 };
 
 function formatDate(value) {
@@ -154,7 +153,7 @@ export default function SeguimientoMecanicosView({ api, currentUser }) {
       </div>
 
       <div className="block-counters">
-        <button type="button" className="block-repuestos" onClick={() => { setStatusFilter("bloqueadas"); setReasonFilter("repuestos"); }}><span>Esperando repuestos</span><strong>{data.resumen.esperandoRepuestos || 0}</strong><small>Compra o llegada pendiente</small></button>
+        <button type="button" className="block-repuestos" onClick={() => { setStatusFilter("bloqueadas"); setMechanicFilter("todos"); setSearch(""); setReasonFilter("repuestos"); }}><span>Esperando repuestos</span><strong>{data.resumen.esperandoRepuestos || 0}</strong><small>Compra o llegada pendiente</small></button>
         <button type="button" className="block-autorizacion" onClick={() => { setStatusFilter("bloqueadas"); setReasonFilter("autorizacion"); }}><span>Esperando autorización</span><strong>{data.resumen.esperandoAutorizacion || 0}</strong><small>Incluye rechazos pendientes de decisión</small></button>
       </div>
       <section className="exit-chart-panel">
@@ -214,6 +213,7 @@ export default function SeguimientoMecanicosView({ api, currentUser }) {
         ))}
       </div>
 
+      <p>OT recibidas en el mes actual. El detalle muestra solo trabajos sin finalizar.</p>
       <div className="tracking-tools">
         <input
           placeholder="Buscar OT, placa, cliente o mecánico"
@@ -235,7 +235,7 @@ export default function SeguimientoMecanicosView({ api, currentUser }) {
           <button
             type="button"
             className={statusFilter === status ? "active" : ""}
-            onClick={() => setStatusFilter(status)}
+            onClick={() => { setStatusFilter(status); setReasonFilter("todos"); }}
             key={status}
           >
             {label}{status === "bloqueadas" ? ` (${data.resumen.bloqueadas || 0})` : ""}

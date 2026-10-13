@@ -133,19 +133,12 @@ export default function BloqueosOTPanel({ api, otId, currentUser, area }) {
   useEffect(() => {
     const controller = new AbortController();
     loadBlocks(api, otId, controller.signal).then((res) => {
-      setData(res.data);
+      setData((current) => ({ ...current, ...res.data }));
       setError("");
     }).catch((e) => { if (!controller.signal.aborted) setError(blockError(e)); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [api, otId, revision]);
-  useEffect(() => {
-    if (canManage || open || saving) return;
-    const reload = () => { if (document.visibilityState === "visible") setRevision((v) => v + 1); };
-    const timer = window.setInterval(reload, 15000);
-    window.addEventListener("focus", reload);
-    return () => { window.clearInterval(timer); window.removeEventListener("focus", reload); };
-  }, [canManage, open, saving]);
   const create = async (event) => {
     event.preventDefault();
     setSaving(true); setError(""); setMessage("");
@@ -160,7 +153,7 @@ export default function BloqueosOTPanel({ api, otId, currentUser, area }) {
     <div className="section-heading"><h3>Bloqueos de la OT</h3><button type="button" onClick={refresh} disabled={loading || saving}>Actualizar respuestas</button></div>
     {error ? <p className="error-state" role="alert">{error}</p> : null}
     {message ? <p role="status">{message}</p> : null}
-    {!canManage ? <small>Las respuestas se actualizan automaticamente cada 15 segundos.</small> : null}
+    {!canManage ? <small>Use Actualizar respuestas para consultar los cambios de Cobranza. Al guardar, se actualiza esta vista.</small> : null}
     {loading ? <p role="status">Consultando bloqueos...</p> : null}
     {!loading && !error && data.trabajos.length ? <button type="button" onClick={() => setOpen(!open)} disabled={saving}>{open ? "Cancelar registro" : "Registrar bloqueo"}</button> : null}
     {open ? <form className="block-create" onSubmit={create}>
